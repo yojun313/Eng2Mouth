@@ -7,7 +7,7 @@
     <div class="max-w-4xl mx-auto space-y-6">
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="glass p-5 rounded-2xl flex items-center justify-between"><div><p class="text-[10px] text-white/40 uppercase font-bold mb-1">Eng2Mouth 누적 사용 요금 (추정)</p><h3 class="text-2xl font-mono font-bold text-blue-300" id="totalUsageText">$0.0000</h3></div><div class="bg-blue-500/10 p-3.5 rounded-xl"><i class="fas fa-file-invoice-dollar text-2xl text-blue-400"></i></div></div>
+            <div class="glass p-5 rounded-2xl flex items-center justify-between"><div><p class="text-[10px] text-white/40 uppercase font-bold mb-1">Eng2Mouth 누적 사용 요금 (추정)</p><h3 class="text-2xl font-mono font-bold text-blue-300" id="totalUsageText">$0.0000</h3><p class="text-xs text-white/50 mt-1" id="totalUsageKrw"></p></div><div class="bg-blue-500/10 p-3.5 rounded-xl"><i class="fas fa-file-invoice-dollar text-2xl text-blue-400"></i></div></div>
             <div class="glass p-5 rounded-2xl flex items-center justify-between"><div><p class="text-[10px] text-white/40 uppercase font-bold mb-1">OpenAI 공식 잔액</p><a href="https://platform.openai.com/settings/organization/billing/overview" target="_blank" class="inline-flex items-center mt-1 text-blue-300 hover:underline font-bold text-sm">결제 대시보드 <i class="fas fa-external-link-alt ml-2 text-xs"></i></a></div><div class="bg-emerald-500/10 p-3.5 rounded-xl"><i class="fas fa-wallet text-2xl text-emerald-400"></i></div></div>
         </div>
 
@@ -178,7 +178,7 @@
     // PWA 설치
     let deferredPrompt = null; window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; document.getElementById('installBtn').classList.remove('hidden'); });
     document.getElementById('installBtn').addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; document.getElementById('installBtn').classList.add('hidden'); });
-    api('/api/settings/usage').then((d) => document.getElementById('totalUsageText').textContent = `$${(d.total_spent_usd || 0).toFixed(4)}`).catch(() => {});
+    api('/api/settings/usage').then((d) => { document.getElementById('totalUsageText').textContent = `$${(d.total_spent_usd || 0).toFixed(4)}`; document.getElementById('totalUsageKrw').textContent = `약 ${fmtKrw(d.total_spent_krw)} (환율 ${Number(d.usd_krw).toLocaleString('ko-KR')}원/$, ${d.source === 'fallback' ? '고정값' : '일 1회 갱신'})`; }).catch(() => {});
     if (location.hash) { setTimeout(() => document.querySelector(location.hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200); }
 </script>
 {% endblock %}

@@ -34,7 +34,8 @@
                 <p class="text-[11px] text-white/45 truncate mt-0.5">${esc(p.name || '')} · ${new Date(c.started_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} · ${fmtDur(c.duration_sec)} · 내 단어 ${c.stats?.user_words ?? 0}개${c.note ? ' · 📝 ' + esc(c.note.slice(0, 30)) : ''}</p>
             </div>
             <div class="text-right flex-shrink-0">
-                ${c.overall != null ? `<p class="text-xl font-extrabold tabular" style="color:${scoreColor(c.overall)}">${c.overall}</p><p class="text-[10px] text-white/40">${esc(c.cefr || '')}</p>` : '<p class="text-[10px] text-white/35 px-2 py-1 rounded-lg bg-white/5">미평가</p>'}
+                ${c.overall != null ? `<p class="text-xl font-extrabold tabular leading-none" style="color:${scoreColor(c.overall)}">${c.overall}</p><p class="text-[10px] text-white/40">${esc(c.cefr || '')}</p>` : '<p class="text-[10px] text-white/35 px-2 py-1 rounded-lg bg-white/5">미평가</p>'}
+                <p class="text-[10px] text-amber-200/90 tabular mt-0.5 whitespace-nowrap"><i class="fas fa-coins mr-0.5 text-[8px]"></i>${fmtKrw(c.cost_krw)}</p>
             </div>
             <i class="fas fa-chevron-right text-white/20 group-hover:text-white/60 transition text-xs"></i>
         </a>`;

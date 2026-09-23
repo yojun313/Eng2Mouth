@@ -183,7 +183,9 @@ async def list_models(user: str = Depends(get_current_user)):
 
 @router.get("/settings/usage")
 async def usage(user: str = Depends(get_current_user)):
-    return {"total_spent_usd": round(AuthManager.get_usage(user), 4)}
+    await pricing.refresh_rate()
+    usd = AuthManager.get_usage(user)
+    return {"total_spent_usd": round(usd, 4), "total_spent_krw": pricing.to_krw(usd), **pricing.rate_info()}
 
 
 @router.post("/settings/password")

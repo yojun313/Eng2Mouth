@@ -247,6 +247,7 @@ function toast(msg, ok = true, ms = 2400) { const el = document.getElementById('
 async function api(url, opts = {}) { const o = { headers: {}, ...opts }; if (o.body && typeof o.body === 'object') { o.headers['Content-Type'] = 'application/json'; o.body = JSON.stringify(o.body); } const res = await fetch(url, o); if (res.status === 401) { location.href = '/login'; throw new Error('로그인 필요'); } const data = await res.json().catch(() => ({})); if (!res.ok) throw new Error(data.detail || `오류 ${res.status}`); return data; }
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function fmtDur(sec) { sec = Math.max(0, Math.round(sec)); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; }
+function fmtKrw(n) { return `${Math.round(n || 0).toLocaleString('ko-KR')}원`; }
 function scoreColor(v) { return v >= 80 ? '#34d399' : v >= 60 ? '#60a5fa' : v >= 40 ? '#fbbf24' : '#f87171'; }
 const gradColors = { 'from-pink-500': ['rgba(236,72,153,.5)', 'rgba(251,146,60,.3)'], 'from-indigo-500': ['rgba(99,102,241,.5)', 'rgba(59,130,246,.3)'], 'from-emerald-500': ['rgba(16,185,129,.5)', 'rgba(45,212,191,.3)'], 'from-slate-500': ['rgba(100,116,139,.5)', 'rgba(6,182,212,.3)'], 'from-amber-500': ['rgba(245,158,11,.5)', 'rgba(248,113,113,.3)'], 'from-violet-500': ['rgba(139,92,246,.5)', 'rgba(168,85,247,.3)'], 'from-sky-500': ['rgba(14,165,233,.5)', 'rgba(52,211,153,.3)'], 'from-rose-400': ['rgba(251,113,133,.5)', 'rgba(249,168,212,.3)'], 'from-fuchsia-500': ['rgba(217,70,239,.5)', 'rgba(99,102,241,.3)'], 'from-teal-500': ['rgba(20,184,166,.5)', 'rgba(96,165,250,.3)'], 'from-blue-500': ['rgba(59,130,246,.5)', 'rgba(139,92,246,.3)'] };
 
@@ -532,7 +533,7 @@ const P_GEMINI = {
     pttStart() { gPttHolding = true; flushPlayback(); gsend({ realtimeInput: { activityStart: {} } }); },
     pttEnd() { gPttHolding = false; gsend({ realtimeInput: { activityEnd: {} } }); },
     greet() { gsend({ clientContent: { turns: [{ role: 'user', parts: [{ text: '(The phone connects. Answer the call now with your natural opening line, then wait for me.)' }] }], turnComplete: true } }); },
-    close() { stopLiveCaptions(); try { call.ws && call.ws.close(); } catch (e) {} try { gMicNode && gMicNode.disconnect(); } catch (e) {} flushPlayback(); },
+    close() { stopLiveCaptions(); try { call.ws && call.ws.close(); } catch (e) {} try { gMicNode && gMicNode.disconnect(); } catch (e) {} try { gLoop && gLoop.forEach((p) => p.close()); } catch (e) {} flushPlayback(); if (gLatencies.length) console.debug('[gemini] latencies(ms)', gLatencies.map(Math.round)); },
 };
 function gsend(obj) { if (call.ws && call.ws.readyState === 1) call.ws.send(JSON.stringify(obj)); }
 // Gemini 는 내 말의 전사를 말이 끝난 뒤(응답과 함께) 보내므로, 브라우저 음성 인식으로 '말하는 중' 자막을 먼저 보여준다.
@@ -549,12 +550,40 @@ function startLiveCaptions() {
     } catch (e) { liveRec = null; }
 }
 function stopLiveCaptions() { if (liveRec) { const r = liveRec; liveRec = null; try { r.onend = null; r.stop(); } catch (e) {} } }
+let gLoop = null; // AEC 루프백용 PeerConnection 쌍
+async function setupAecPlayback(ctx) {
+    // Chrome 은 Web Audio 로 직접 낸 소리를 에코 제거 참조로 잘 쓰지 못한다. WebRTC 트랙으로 돌려 <audio> 로 재생하면
+    // OpenAI(WebRTC) 경로와 같은 방식으로 AEC 가 걸려, 스피커폰에서도 상대 목소리가 마이크로 되먹임되지 않는다.
+    try {
+        const dest = ctx.createMediaStreamDestination(); gPlayGain.connect(dest);
+        const pc1 = new RTCPeerConnection(), pc2 = new RTCPeerConnection(); gLoop = [pc1, pc2];
+        pc1.onicecandidate = (e) => e.candidate && pc2.addIceCandidate(e.candidate).catch(() => {});
+        pc2.onicecandidate = (e) => e.candidate && pc1.addIceCandidate(e.candidate).catch(() => {});
+        dest.stream.getTracks().forEach((t) => pc1.addTrack(t, dest.stream));
+        const remote = new Promise((res) => { pc2.ontrack = (e) => res(e.streams[0]); });
+        const offer = await pc1.createOffer(); await pc1.setLocalDescription(offer); await pc2.setRemoteDescription(offer);
+        const answer = await pc2.createAnswer(); await pc2.setLocalDescription(answer); await pc1.setRemoteDescription(answer);
+        const stream = await Promise.race([remote, new Promise((_, rej) => setTimeout(() => rej(new Error('loopback timeout')), 3000))]);
+        call.audioEl = new Audio(); call.audioEl.autoplay = true; call.audioEl.playsInline = true; call.audioEl.setAttribute('playsinline', ''); call.audioEl.srcObject = stream;
+        await call.audioEl.play().catch(() => {});
+        console.debug('[gemini] AEC loopback playback ready');
+    } catch (e) {
+        console.warn('[gemini] loopback failed, falling back to direct output', e);
+        try { gLoop && gLoop.forEach((p) => p.close()); } catch (e2) {}
+        gLoop = null; gPlayGain.connect(ctx.destination);
+    }
+}
+// 지연 측정: 내 말이 끝난 시점 → 상대 첫 오디오 도착
+let gLastVoiceAt = 0, gSpeechEndAt = 0, gWaitingReply = false, gLatencies = [];
+function noteMicLevel(lvl) { const now = performance.now(); if (lvl > 0.08) { gLastVoiceAt = now; gWaitingReply = true; gSpeechEndAt = 0; } else if (gWaitingReply && !gSpeechEndAt && gLastVoiceAt && now - gLastVoiceAt > 300) { gSpeechEndAt = gLastVoiceAt; } }
+function noteReplyAudio() { if (gWaitingReply && gSpeechEndAt) { const ms = performance.now() - gSpeechEndAt; gLatencies.push(ms); gWaitingReply = false; const el = document.getElementById('netLabel'); if (el) el.textContent = `지연 ${(ms / 1000).toFixed(1)}s`; console.debug('[gemini] reply latency', Math.round(ms), 'ms; ws buffered', call.ws?.bufferedAmount); } }
 async function connectGemini(s) {
     call.P = P_GEMINI;
     const ctx = ensureAudioCtx();
-    gPlayGain = ctx.createGain(); gPlayGain.connect(ctx.destination);
+    gPlayGain = ctx.createGain();
+    await setupAecPlayback(ctx);
     setupAnalyserNode(gPlayGain, 'speakRing', 1.0, 0.18);
-    setupAnalyser(call.mic, 'userRing', 1.0, 0.12);
+    setupAnalyser(call.mic, 'userRing', 1.0, 0.12, noteMicLevel);
     try { await openGeminiSocket(s, s.ws_url); }
     catch (e) { if (s.ws_url_alt && /1008|unregistered|403|401/.test(String(e.message))) { console.warn('primary ws rejected, trying alt', e.message); await openGeminiSocket(s, s.ws_url_alt); } else throw e; }
 }
@@ -567,7 +596,8 @@ function openGeminiSocket(s, url) {
         ws.onmessage = async (e) => {
             let txt = e.data; if (txt instanceof Blob) txt = await txt.text();
             let msg; try { msg = JSON.parse(txt); } catch (err) { return; }
-            if (msg.setupComplete !== undefined) { if (!settled) { settled = true; clearTimeout(timer); resolve(); } startMicStreaming().catch((err) => toast('마이크 스트리밍 오류: ' + err.message, false)); onConnected(); startLiveCaptions(); return; }
+            if (msg.setupComplete !== undefined) { if (!settled) { settled = true; clearTimeout(timer); resolve(); } startMicStreaming().catch((err) => toast('마이크 스트리밍 오류: ' + err.message, false)); onConnected(); startLiveCaptions();
+                setInterval(() => { if (!call.ended && call.ws && call.ws.bufferedAmount > 20000) console.warn('[gemini] upstream backlog', call.ws.bufferedAmount, 'bytes'); }, 3000); return; }
             handleGemini(msg);
         };
         ws.onerror = () => { if (!settled) { settled = true; clearTimeout(timer); reject(new Error('Gemini WebSocket 연결 실패 (키/모델/네트워크 확인)')); } };
@@ -616,6 +646,7 @@ function handleGemini(msg) {
     if (msg.goAway) { toast('세션 시간이 곧 만료됩니다. 마무리 인사를 해보세요.', false, 5000); }
 }
 function enqueuePcm(b64, rate) {
+    noteReplyAudio();
     const ctx = ensureAudioCtx(); const bin = atob(b64); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     const n = bytes.length >> 1; if (!n) return; const i16 = new Int16Array(bytes.buffer, 0, n); const f32 = new Float32Array(n); for (let i = 0; i < n; i++) f32[i] = i16[i] / 32768;
     const buf = ctx.createBuffer(1, n, rate); buf.copyToChannel(f32, 0);
@@ -663,11 +694,11 @@ function setupAnalyserNode(node, ringId, base, gain) {
 }
 
 // ---------- 오디오 레벨 → 링 애니메이션 ----------
-function setupAnalyser(stream, ringId, base, gain) {
+function setupAnalyser(stream, ringId, base, gain, onLevel) {
     try {
         const ctx = ensureAudioCtx(); const src = ctx.createMediaStreamSource(stream); const an = ctx.createAnalyser(); an.fftSize = 512; src.connect(an);
         const data = new Uint8Array(an.frequencyBinCount); const ring = document.getElementById(ringId);
-        const loop = () => { if (call.ended) return; an.getByteTimeDomainData(data); let sum = 0; for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v; } const rms = Math.sqrt(sum / data.length); const lvl = Math.min(1, rms * 6); ring.style.opacity = lvl > 0.06 ? String(0.35 + lvl * 0.65) : '0'; ring.style.transform = `scale(${(base + lvl * gain * 2).toFixed(3)})`; requestAnimationFrame(loop); };
+        const loop = () => { if (call.ended) return; an.getByteTimeDomainData(data); let sum = 0; for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v; } const rms = Math.sqrt(sum / data.length); const lvl = Math.min(1, rms * 6); if (onLevel) onLevel(lvl); ring.style.opacity = lvl > 0.06 ? String(0.35 + lvl * 0.65) : '0'; ring.style.transform = `scale(${(base + lvl * gain * 2).toFixed(3)})`; requestAnimationFrame(loop); };
         loop();
     } catch (e) { console.warn('analyser', e); }
 }
@@ -757,18 +788,22 @@ async function showReport(payload) {
             <p class="text-[10px] text-white/35 mt-1"><i class="fas ${PROVIDER_INFO[call.provider]?.icon || 'fa-bolt'} mr-1"></i>${PROVIDER_INFO[call.provider]?.label || ''} · ${esc(call.model || '')}</p>
         </div>
         <div id="statRow" class="grid grid-cols-3 gap-2"></div>
+        <div id="costBox" class="glass rounded-2xl p-4 flex items-center justify-between hidden"><div><p class="text-[10px] text-white/45"><i class="fas fa-coins mr-1 text-amber-300"></i>이 통화 비용 (추정)</p><p class="text-2xl font-extrabold tabular" id="costKrw">—</p></div><p class="text-xs text-white/45 text-right" id="costUsd"></p></div>
         <div id="evalBox" class="glass rounded-2xl p-5 text-center"><p class="text-white/60 text-sm"><i class="fas fa-spinner fa-spin mr-2"></i>통화 내용을 저장하고 있어요…</p></div>`;
     let fin;
     try { fin = await api(`/api/calls/${call.id}/finish`, { method: 'POST', body: payload }); }
     catch (e) { document.getElementById('evalBox').innerHTML = `<p class="text-red-300 text-sm">${esc(e.message)}</p>`; return; }
     const st = fin.stats || {};
+    const showCost = (usd, krw, rate, note) => { const b = document.getElementById('costBox'); b.classList.remove('hidden'); document.getElementById('costKrw').textContent = fmtKrw(krw); document.getElementById('costUsd').innerHTML = `≈ $${(usd || 0).toFixed(4)}<br><span class="text-[10px] text-white/35">환율 ${Number(rate || 0).toLocaleString('ko-KR')}원/$ · ${note}</span>`; };
+    showCost(fin.cost_usd, fin.cost_krw, fin.usd_krw, '통화만');
     document.getElementById('statRow').innerHTML = [['내가 말한 단어', st.user_words, '개'], ['내 발화 비중', st.talk_share, '%'], ['분당 단어', st.words_per_minute, 'wpm']].map(([l, v, u]) => `<div class="glass rounded-2xl p-3 text-center"><p class="text-[10px] text-white/45">${l}</p><p class="text-xl font-extrabold tabular">${v ?? 0}<span class="text-xs text-white/40 font-normal ml-0.5">${u}</span></p></div>`).join('');
     const box = document.getElementById('evalBox');
-    if (!fin.can_evaluate) { box.innerHTML = `<i class="fas fa-face-smile text-3xl text-white/40 mb-2"></i><p class="text-sm text-white/70">이번엔 짧게 끝났네요. 평가는 두 마디 이상 이야기했을 때 만들어져요.</p><p class="text-xs text-white/40 mt-1">비용: 약 $${(fin.cost_usd || 0).toFixed(4)}</p>`; return; }
+    if (!fin.can_evaluate) { box.innerHTML = `<i class="fas fa-face-smile text-3xl text-white/40 mb-2"></i><p class="text-sm text-white/70">이번엔 짧게 끝났네요. 평가는 두 마디 이상 이야기했을 때 만들어져요.</p>`; return; }
     box.innerHTML = `<p class="text-white/70 text-sm"><i class="fas fa-wand-magic-sparkles text-purple-300 mr-2"></i>말하기 평가 리포트를 만들고 있어요… (10~30초)</p><div class="score-track mt-3"><div class="score-fill bg-gradient-to-r from-blue-400 to-purple-400" style="width:30%;animation:grow 20s linear forwards"></div></div><style>@keyframes grow{to{width:95%}}</style>`;
     try {
-        const ev = (await api(`/api/calls/${call.id}/evaluate`, { method: 'POST' })).evaluation;
-        box.outerHTML = renderEvaluation(ev, call.id) + `<p class="text-[10px] text-white/35 text-center">통화 비용 약 $${(fin.cost_usd || 0).toFixed(4)} · 평가 모델 ${esc(ev.model || '')}</p>`;
+        const evRes = await api(`/api/calls/${call.id}/evaluate`, { method: 'POST' }); const ev = evRes.evaluation;
+        showCost(evRes.cost_usd, evRes.cost_krw, evRes.usd_krw, `통화 + 평가 리포트(${fmtKrw((ev.cost_usd || 0) * (evRes.usd_krw || 0))})`);
+        box.outerHTML = renderEvaluation(ev, call.id) + `<p class="text-[10px] text-white/35 text-center">평가 모델 ${esc(ev.model || '')}</p>`;
         bindSaveButtons();
     } catch (e) { box.innerHTML = `<p class="text-red-300 text-sm">${esc(e.message)}</p><button onclick="location.reload()" class="btn-ghost px-4 py-2 rounded-xl text-xs mt-3">다시 시도</button>`; }
 }

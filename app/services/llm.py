@@ -60,7 +60,8 @@ async def chat_json(
             thinking=1024 if quality == "best" else 0,
         )
         model = usage.get("_model") or model
-        AuthManager.add_usage(username, pricing.gemini_text_cost(model, usage))
+        cost = pricing.gemini_text_cost(model, usage)
+        AuthManager.add_usage(username, cost)
     else:
         model = s.get("chat_model") or settings.CHAT_MODEL
         result, usage = await openai_service.chat_json(
@@ -73,8 +74,9 @@ async def chat_json(
             effort="low" if quality == "best" else "minimal",
         )
         model = usage.get("_model") or model
-        AuthManager.add_usage(username, pricing.chat_cost(model, usage))
-    return result, model
+        cost = pricing.chat_cost(model, usage)
+        AuthManager.add_usage(username, cost)
+    return result, {"model": model, "cost_usd": cost}
 
 
 async def tts(

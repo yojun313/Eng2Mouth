@@ -26,6 +26,12 @@ async def on_startup():
         ensure_indexes()
     except Exception as e:  # noqa: BLE001
         print(f"[WARN] index creation skipped: {e}")
+    try:
+        from app.services import pricing
+
+        await pricing.refresh_rate(force=True)
+    except Exception as e:  # noqa: BLE001
+        print(f"[WARN] exchange rate fetch failed: {e}")
 
 
 @app.get("/favicon.ico", include_in_schema=False)

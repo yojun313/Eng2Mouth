@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 
 from app.db import calls_col, phrases_col
-from app.services import llm
+from app.services import llm, pricing
 from app.services.prompts import EVAL_SCHEMA, EVAL_SYSTEM
 from app.services.topics import KST
 
@@ -92,7 +92,7 @@ async def evaluate_call(username: str, call: dict, user_settings: dict) -> dict:
     system = EVAL_SYSTEM.replace(
         "{level}", user_settings.get("level", "intermediate")
     ).replace("{topic}", str(topic.get("title") or topic.get("kind") or "free talk"))
-    result, model = await llm.chat_json(
+    result, meta = await llm.chat_json(
         username,
         user_settings,
         system,
@@ -101,17 +101,19 @@ async def evaluate_call(username: str, call: dict, user_settings: dict) -> dict:
         max_tokens=4000,
         quality="best",
     )
+    model, eval_cost = meta["model"], meta["cost_usd"]
 
     # 점수 범위 보정
     result["overall"] = int(max(0, min(100, result.get("overall", 0))))
     for k, v in (result.get("scores") or {}).items():
         result["scores"][k] = int(max(0, min(100, v)))
     result["model"] = model
+    result["cost_usd"] = eval_cost
     result["evaluated_at"] = datetime.now(timezone.utc)
 
     calls_col.update_one(
         {"id": call["id"]},
-        {"$set": {"evaluation": result, "status": "evaluated"}},
+        {"$set": {"evaluation": result, "status": "evaluated"}, "$inc": {"cost_usd": eval_cost}},
     )
     return result
 
@@ -127,6 +129,8 @@ def serialize_call(doc: dict, full: bool = False) -> dict:
         "duration_sec": doc.get("duration_sec", 0),
         "stats": doc.get("stats") or {},
         "cost_usd": round(float(doc.get("cost_usd", 0) or 0), 4),
+        "cost_krw": pricing.to_krw(doc.get("cost_usd", 0) or 0),
+        "usd_krw": round(pricing.current_rate(), 2),
         "provider": doc.get("provider", "openai"),
         "model": doc.get("model"),
         "overall": (doc.get("evaluation") or {}).get("overall"),

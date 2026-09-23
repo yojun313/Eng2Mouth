@@ -1,4 +1,39 @@
-"""요금 추정 (USD per 1M tokens). 참고용 근사치 — 실제 청구는 OpenAI 대시보드 기준."""
+"""요금 추정 (USD per 1M tokens). 참고용 근사치 — 실제 청구는 각 제공자 대시보드 기준. 원화 환산은 일 1회 갱신되는 환율 사용."""
+
+import os
+import time
+
+import httpx
+
+_FALLBACK_RATE = float(os.getenv("USD_KRW", "1400"))
+_rate_cache = {"rate": _FALLBACK_RATE, "ts": 0.0, "source": "fallback"}
+
+
+def current_rate() -> float:
+    return float(_rate_cache["rate"])
+
+
+def rate_info() -> dict:
+    return {"usd_krw": round(current_rate(), 2), "source": _rate_cache["source"], "updated_at": _rate_cache["ts"]}
+
+
+async def refresh_rate(force: bool = False) -> float:
+    """open.er-api.com (무료, 키 불필요) 에서 USD→KRW. 12시간 캐시. 실패 시 이전 값/고정값 유지."""
+    if not force and time.time() - _rate_cache["ts"] < 12 * 3600:
+        return current_rate()
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(8.0, connect=5.0)) as client:
+            r = await client.get("https://open.er-api.com/v6/latest/USD")
+        rate = float(r.json()["rates"]["KRW"])
+        if 500 < rate < 5000:
+            _rate_cache.update({"rate": rate, "ts": time.time(), "source": "open.er-api.com"})
+    except Exception:  # noqa: BLE001
+        _rate_cache["ts"] = time.time() - 11 * 3600  # 1시간 뒤 재시도
+    return current_rate()
+
+
+def to_krw(usd: float) -> int:
+    return int(round(float(usd or 0) * current_rate()))
 
 _RT_FULL = {
     "text_in": 4.0,

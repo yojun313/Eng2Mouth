@@ -45,7 +45,8 @@
                         <div class="glass-soft rounded-xl p-2"><p class="text-[10px] text-white/45">고유 단어</p><p class="font-extrabold tabular">${st.unique_words ?? 0}</p></div>
                         <div class="glass-soft rounded-xl p-2"><p class="text-[10px] text-white/45">최장 발화</p><p class="font-extrabold tabular">${st.longest_turn_words ?? 0}<span class="text-[10px] font-normal text-white/40">단어</span></p></div>
                     </div>
-                    <p class="text-[10px] text-white/35 mt-3">${fmtDate(doc.started_at)} · 비용 약 $${(doc.cost_usd || 0).toFixed(4)}${t.kind === 'scenario' ? ` · 롤플레이 (AI: ${esc(t.ai_role || '')})` : ''}</p>
+                    <p class="text-[10px] text-white/35 mt-3">${fmtDate(doc.started_at)}${t.kind === 'scenario' ? ` · 롤플레이 (AI: ${esc(t.ai_role || '')})` : ''}</p>
+                    <div class="glass-soft rounded-xl p-3 mt-3 flex items-center justify-between"><div><p class="text-[10px] text-white/45"><i class="fas fa-coins mr-1 text-amber-300"></i>이 통화 비용 (평가 포함 · 추정)</p><p class="text-lg font-extrabold tabular">${fmtKrw(doc.cost_krw)} <span class="text-xs font-normal text-white/50">≈ $${(doc.cost_usd || 0).toFixed(4)}</span></p></div><p class="text-[10px] text-white/35 text-right">${esc(doc.provider || '')}<br>${esc(doc.model || '')}<br>환율 ${Number(doc.usd_krw || 0).toLocaleString('ko-KR')}원/$</p></div>
                     <div class="flex gap-2 mt-4">
                         <a href="/call?kind=${t.kind === 'scenario' ? 'scenario' : t.kind === 'free' ? 'free' : (t.id === 'custom' ? 'custom&title=' + encodeURIComponent(t.title || '') : 'topic')}&id=${encodeURIComponent(t.id || '')}" class="btn-call flex-1 py-2.5 rounded-xl text-sm font-bold text-center"><i class="fas fa-phone mr-1"></i>같은 주제로 다시</a>
                         <button id="copyBtn" class="btn-ghost px-3 rounded-xl text-sm" title="대화 복사"><i class="fas fa-copy"></i></button>
