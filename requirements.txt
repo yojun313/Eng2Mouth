@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+jinja2
+pymongo
+bcrypt
+python-dotenv
+python-multipart
+httpx

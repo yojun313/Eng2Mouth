@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){try{var t=localStorage.getItem('e2m_theme_style');if(t&&t!=='default')document.documentElement.setAttribute('data-ui-theme',t);if(localStorage.getItem('theme')==='light'){document.documentElement.setAttribute('data-ui-theme-mode','light');}else{document.documentElement.classList.add('dark');}}catch(e){}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>API Key 발급 가이드 - Eng2Mouth</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/shared/app.css">
+    <style>.step { background: linear-gradient(135deg,#3b82f6,#8b5cf6); width: 2rem; height: 2rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; margin-right: .75rem; flex-shrink: 0; color: #fff; }</style>
+    <link rel="stylesheet" href="/static/shared/theme.css">
+</head>
+<body class="text-white min-h-screen">
+    <button id="themeSettingsBtn" class="theme-settings-btn" type="button" style="position:fixed;top:16px;right:16px;z-index:100;"><i class="fas fa-palette text-sm"></i></button>
+    <div class="max-w-3xl mx-auto p-5 md:p-10 glass rounded-3xl my-6 md:my-10 space-y-8">
+        <header class="border-b border-white/10 pb-5">
+            <h1 class="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-300 to-purple-300">API Key 발급 및 사용 가이드</h1>
+            <p class="text-white/50 mt-1 text-sm">Eng2Mouth 는 내 키로 실시간 음성 통화와 말하기 평가를 실행합니다. Gemini 와 OpenAI 중 하나만 있어도 됩니다.</p>
+        </header>
+        <section id="gemini" class="glass-soft rounded-2xl p-5 space-y-4 border border-blue-400/20">
+            <h2 class="text-lg font-bold"><i class="fas fa-gem text-blue-300 mr-2"></i>Google Gemini (저렴 · 무료 티어)</h2>
+            <ol class="list-decimal list-inside text-sm text-white/75 space-y-2">
+                <li><a href="https://aistudio.google.com/apikey" target="_blank" class="text-blue-300 hover:underline">Google AI Studio → Get API key <i class="fas fa-external-link-alt text-xs"></i></a> 에서 구글 계정으로 로그인 후 <b>Create API key</b> 를 누릅니다. 결제 등록 없이도 무료 티어로 바로 사용할 수 있습니다.</li>
+                <li>생성된 <code class="bg-black/40 px-1.5 py-0.5 rounded font-mono text-xs">AIza…</code> 키를 <a href="/settings#api" class="text-blue-300 hover:underline">설정 → Gemini API Key</a> 에 붙여 넣고 "키 확인"을 누르면 접근 가능한 Live 모델을 자동으로 찾습니다.</li>
+                <li>무료 티어는 분당 요청 수와 하루 사용량에 제한이 있습니다. 한도에 걸리면 "요청 한도" 오류가 나며, Google Cloud 결제를 연결하면 유료 티어로 제한이 풀립니다.</li>
+            </ol>
+            <p class="text-[12px] text-white/50">비용 감 (유료 티어 기준 추정): 통화 10분 약 $0.12~0.35 · 평가 1회 약 $0.003 (Gemini 2.5 Flash).</p>
+        </section>
+        <h2 id="openai" class="text-lg font-bold pt-2"><i class="fas fa-bolt text-emerald-300 mr-2"></i>OpenAI (가장 사람 같은 목소리)</h2>
+        <section><h2 class="text-lg font-bold flex items-center mb-3"><span class="step">1</span>OpenAI 계정 만들기</h2><p class="pl-11 text-sm text-white/70">이미 ChatGPT 계정이 있다면 그대로 사용합니다. <a href="https://platform.openai.com/signup" target="_blank" class="text-blue-300 hover:underline">platform.openai.com/signup <i class="fas fa-external-link-alt text-xs"></i></a></p></section>
+        <section><h2 class="text-lg font-bold flex items-center mb-3"><span class="step">2</span>결제 수단 등록 & 크레딧 충전</h2><p class="pl-11 text-sm text-white/70">API 는 ChatGPT Plus 와 별개로 사용량만큼 과금됩니다. <a href="https://platform.openai.com/settings/organization/billing/overview" target="_blank" class="text-blue-300 hover:underline">결제 페이지 <i class="fas fa-external-link-alt text-xs"></i></a> 에서 $5~10 정도 충전하면 충분히 시작할 수 있습니다.</p></section>
+        <section><h2 class="text-lg font-bold flex items-center mb-3"><span class="step">3</span>API Key 만들기</h2><div class="pl-11 text-sm text-white/70 space-y-2"><p><a href="https://platform.openai.com/api-keys" target="_blank" class="text-blue-300 hover:underline">API Keys 페이지 <i class="fas fa-external-link-alt text-xs"></i></a> → <b>Create new secret key</b>. 이름은 "Eng2Mouth" 처럼 적어두세요.</p><p class="text-amber-300"><i class="fas fa-triangle-exclamation mr-1"></i>키는 생성 직후 한 번만 보입니다. 바로 복사하세요.</p></div></section>
+        <section><h2 class="text-lg font-bold flex items-center mb-3"><span class="step">4</span>Eng2Mouth 설정에 붙여넣기</h2><div class="pl-11 text-sm text-white/70 space-y-2"><p><a href="/settings#api" class="text-blue-300 hover:underline">설정 → OpenAI API Key</a> 칸에 <code class="bg-black/40 px-1.5 py-0.5 rounded font-mono text-xs">sk-…</code> 키를 붙여 넣으면 자동 저장되고, "키 확인" 버튼으로 모델 접근 여부를 검사할 수 있습니다.</p><p>키는 서버 DB 에 본인 계정에만 저장되며, 통화 시 10분짜리 임시 토큰을 만드는 데만 쓰입니다. 브라우저에는 실제 키가 전달되지 않습니다.</p></div></section>
+        <section class="glass-soft rounded-2xl p-4 text-sm text-white/70"><p class="font-bold text-white/85 mb-2"><i class="fas fa-coins mr-1 text-amber-300"></i>비용 감 잡기 (참고용 추정)</p><ul class="list-disc list-inside space-y-1 text-[13px]"><li>gpt-realtime 통화 10분: 대략 $0.3~0.6 (말을 많이 할수록, 상대가 길게 말할수록 증가)</li><li>gpt-realtime-mini 통화 10분: 대략 $0.1~0.2</li><li>통화 후 평가 리포트 1회: $0.005~0.02 · 힌트/번역 1회: $0.001 미만</li></ul><p class="text-[11px] text-white/40 mt-2">정확한 금액은 OpenAI 사용량 대시보드를 확인하세요. 앱의 누적 사용 금액은 공개 단가 기준 추정치입니다.</p></section>
+        <div class="text-center pt-2"><a href="/settings#api" class="btn-glow inline-block px-6 py-2.5 rounded-xl font-bold text-sm">설정으로 이동</a></div>
+    </div>
+    <script src="/static/shared/theme.js"></script>
+</body>
+</html>

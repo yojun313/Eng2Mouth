@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){try{var t=localStorage.getItem('e2m_theme_style');if(t&&t!=='default')document.documentElement.setAttribute('data-ui-theme',t);if(localStorage.getItem('theme')==='light'){document.documentElement.setAttribute('data-ui-theme-mode','light');}else{document.documentElement.classList.add('dark');}}catch(e){}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Eng2Mouth — AI와 전화로 배우는 영어 회화</title>
+    <meta name="description" content="진짜 사람과 통화하는 것처럼 AI 원어민과 영어로 전화하고, 끝나면 말하기 평가 리포트를 받아보세요. 모바일에서 바로, 내 API 키로.">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#05070f">
+    <meta property="og:title" content="Eng2Mouth — AI와 전화로 배우는 영어 회화">
+    <meta property="og:description" content="전화 걸듯 영어로 대화하고, 통화가 끝나면 말하기 평가를 받으세요.">
+    <meta property="og:image" content="/static/icons/icon-512.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/shared/app.css">
+    <style>
+        body { background: radial-gradient(circle at 15% 10%, rgba(59,130,246,0.30), transparent 40%), radial-gradient(circle at 85% 20%, rgba(168,85,247,0.25), transparent 45%), radial-gradient(circle at 50% 100%, rgba(16,185,129,0.18), transparent 50%), #05070f; background-attachment: fixed; overflow-x: hidden; }
+        .blob { position: fixed; border-radius: 9999px; filter: blur(100px); opacity: .45; z-index: -1; animation: float 14s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(20px,-30px) scale(1.08); } }
+        .hero-title { font-size: clamp(2rem, 6vw, 3.6rem); line-height: 1.12; letter-spacing: -0.02em; }
+        .gradient-text { background: linear-gradient(90deg, #6ee7b7, #93c5fd, #c4b5fd); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+        .reveal.in { opacity: 1; transform: none; }
+        /* 폰 목업 */
+        .phone { width: 280px; height: 580px; border-radius: 44px; padding: 12px; background: linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.04)); border: 1px solid rgba(255,255,255,.18); box-shadow: 0 30px 80px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.06); position: relative; }
+        .phone-screen { width: 100%; height: 100%; border-radius: 34px; overflow: hidden; position: relative; background: radial-gradient(circle at 50% 18%, rgba(236,72,153,.5), transparent 55%), radial-gradient(circle at 50% 100%, rgba(251,146,60,.3), transparent 60%), #0a0d18; display: flex; flex-direction: column; align-items: center; padding: 46px 18px 22px; color: #fff; }
+        .notch { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 110px; height: 28px; border-radius: 20px; background: #05070f; z-index: 2; }
+        .pavatar { width: 108px; height: 108px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 46px; background: linear-gradient(135deg, #ec4899, #fb923c); box-shadow: 0 16px 40px rgba(0,0,0,.4); position: relative; }
+        .pring { position: absolute; inset: -10px; border-radius: 50%; border: 3px solid rgba(52,211,153,.7); animation: pring 2.2s ease-out infinite; }
+        .pring:nth-child(2) { animation-delay: .7s; } .pring:nth-child(3) { animation-delay: 1.4s; }
+        @keyframes pring { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(1.6); opacity: 0; } }
+        .pctl { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; font-size: 15px; }
+        .caption-cycle { min-height: 3.6em; }
+        .caption-cycle span { display: none; }
+        .caption-cycle span.show { display: block; animation: fadeIn .4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        .feature-card { transition: transform .2s, border-color .2s; }
+        .feature-card:hover { transform: translateY(-3px); border-color: rgba(96,165,250,.45); }
+        .step-num { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg,#3b82f6,#8b5cf6); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; box-shadow: 0 6px 18px rgba(59,130,246,.35); color: #fff; }
+        html[data-ui-theme-mode="light"] .phone-screen { color: #fff; }
+        html[data-ui-theme-mode="light"] .glass { background: rgba(255,255,255,.6); }
+        @media (max-width: 767px) { .phone { width: 240px; height: 500px; } .pavatar { width: 90px; height: 90px; font-size: 40px; } }
+    </style>
+    <link rel="stylesheet" href="/static/shared/theme.css">
+</head>
+<body class="text-white min-h-[100dvh]">
+    <div class="blob w-[28rem] h-[28rem] bg-blue-600 -top-32 -left-24"></div>
+    <div class="blob w-[26rem] h-[26rem] bg-purple-600 top-1/3 -right-32" style="animation-delay:-5s"></div>
+    <div class="blob w-80 h-80 bg-emerald-500 bottom-0 left-1/4" style="animation-delay:-9s"></div>
+
+    <!-- 상단 바 -->
+    <header class="sticky top-0 z-40 glass border-b border-white/10" style="padding-top: var(--safe-top);">
+        <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-2 font-extrabold text-lg tracking-tight">
+                <span class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm shadow-lg"><i class="fas fa-phone"></i></span>
+                <span class="gradient-text">Eng2Mouth</span>
+            </a>
+            <nav class="hidden md:flex items-center gap-6 text-sm text-white/60">
+                <a href="#how" class="hover:text-white transition">어떻게 되나요</a>
+                <a href="#features" class="hover:text-white transition">기능</a>
+                <a href="#personas" class="hover:text-white transition">통화 상대</a>
+                <a href="#pricing" class="hover:text-white transition">비용</a>
+            </nav>
+            <div class="flex items-center gap-2">
+                <button id="themeSettingsBtn" class="theme-settings-btn" type="button" title="테마 설정" aria-label="테마 설정"><i class="fas fa-palette text-sm"></i></button>
+                <a href="/login" class="btn-ghost px-3.5 py-2 rounded-xl text-sm font-bold">로그인</a>
+                <a href="/signup" class="btn-glow px-3.5 py-2 rounded-xl text-sm font-bold hidden sm:inline-block">시작하기</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4">
+        <!-- 히어로 -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-10 items-center pt-12 md:pt-20 pb-16">
+            <div class="reveal in">
+                <span class="chip text-emerald-200 border-emerald-400/30 bg-emerald-500/10 text-[11px] px-3 py-1"><i class="fas fa-circle text-[6px] animate-pulse"></i> 진짜 통화처럼 · 모바일 완벽 지원</span>
+                <h1 class="hero-title font-extrabold mt-4">영어 회화, <br><span class="gradient-text">전화 한 통</span>으로<br>매일 10분.</h1>
+                <p class="text-white/65 text-base md:text-lg mt-5 leading-relaxed">외국인 친구에게 전화 걸듯 AI와 영어로 대화하세요. 말이 끝나면 자연스럽게 이어 말하고, 끼어들어도 되고, 헤어질 땐 먼저 인사하고 끊습니다. 통화가 끝나면 <b class="text-white/90">말하기 평가 리포트</b>가 도착합니다.</p>
+                <div class="flex flex-wrap gap-3 mt-7">
+                    <a href="/signup" class="btn-call px-6 py-3.5 rounded-2xl font-extrabold text-base inline-flex items-center gap-2"><i class="fas fa-phone"></i> 무료로 시작하기</a>
+                    <a href="/login" class="btn-ghost px-6 py-3.5 rounded-2xl font-bold text-base inline-flex items-center gap-2">로그인 <i class="fas fa-arrow-right text-sm"></i></a>
+                </div>
+                <div class="flex flex-wrap gap-x-5 gap-y-2 mt-6 text-xs text-white/50">
+                    <span><i class="fas fa-key mr-1.5 text-blue-300"></i>내 OpenAI / Gemini 키로 사용 · 구독 없음</span>
+                    <span><i class="fas fa-mobile-screen mr-1.5 text-emerald-300"></i>홈 화면에 앱처럼 설치</span>
+                    <span><i class="fas fa-lock mr-1.5 text-purple-300"></i>키는 브라우저로 내려가지 않음</span>
+                </div>
+            </div>
+            <div class="flex justify-center md:justify-end reveal in">
+                <div class="phone">
+                    <div class="notch"></div>
+                    <div class="phone-screen">
+                        <div class="w-full flex items-center justify-between text-[10px] text-white/60"><span class="chip">☕ 카페와 커피 문화</span><span class="chip"><i class="fas fa-signal"></i> 통화 중</span></div>
+                        <div class="pavatar mt-6"><div class="pring"></div><div class="pring"></div><div class="pring"></div>😊</div>
+                        <p class="text-xl font-extrabold mt-4">Emma</p>
+                        <p class="text-[11px] text-white/55">편한 친구 · American (California)</p>
+                        <p class="text-xs text-white/70 font-mono mt-1" id="demoTimer">3:42</p>
+                        <div class="caption-cycle text-center mt-5 px-1" id="captions">
+                            <span class="show"><em class="text-[11px] text-blue-200 not-italic">“I went to a small cafe near my house”</em><br><b class="text-[15px] leading-snug">Oh nice, which cafe? I've been looking for a new spot!</b></span>
+                            <span><em class="text-[11px] text-blue-200 not-italic">“It's called Blue Bottle, the coffee was amazing”</em><br><b class="text-[15px] leading-snug">No way, I love that place. Did you get the latte?</b></span>
+                            <span><em class="text-[11px] text-blue-200 not-italic">“Yeah and I go there yesterday too”</em><br><b class="text-[15px] leading-snug">You went there yesterday too? Wow, you're a regular now!</b></span>
+                        </div>
+                        <div class="mt-auto w-full">
+                            <div class="grid grid-cols-4 gap-2 mb-3 justify-items-center text-white/80"><div class="pctl"><i class="fas fa-microphone"></i></div><div class="pctl bg-white/90 !text-slate-900"><i class="fas fa-closed-captioning"></i></div><div class="pctl"><i class="fas fa-lightbulb"></i></div><div class="pctl"><i class="fas fa-language"></i></div></div>
+                            <div class="flex justify-center"><div class="w-14 h-14 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/40"><i class="fas fa-phone rotate-[135deg] text-xl"></i></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 어떻게 되나요 -->
+        <section id="how" class="py-14 reveal">
+            <h2 class="text-2xl md:text-3xl font-extrabold text-center">전화 한 통이 이렇게 흘러가요</h2>
+            <p class="text-white/50 text-center mt-2 text-sm">가입 후 API 키만 넣으면 1분 안에 첫 통화를 걸 수 있습니다.</p>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-10">
+                <div class="glass rounded-2xl p-5"><div class="flex items-center gap-3 mb-3"><span class="step-num">1</span><p class="font-bold">상대와 주제 고르기</p></div><p class="text-sm text-white/60 leading-relaxed">편한 친구, 교수, 면접관 등 10가지 상대 중 하나를 고르고, 매일 바뀌는 추천 주제나 롤플레이 시나리오를 선택합니다.</p></div>
+                <div class="glass rounded-2xl p-5"><div class="flex items-center gap-3 mb-3"><span class="step-num">2</span><p class="font-bold">전화 걸기</p></div><p class="text-sm text-white/60 leading-relaxed">발신음이 울리고 상대가 전화를 받습니다. "Hey! What's up?" 이어폰만 끼면 진짜 통화와 구분이 어렵습니다.</p></div>
+                <div class="glass rounded-2xl p-5"><div class="flex items-center gap-3 mb-3"><span class="step-num">3</span><p class="font-bold">막히면 도움받기</p></div><p class="text-sm text-white/60 leading-relaxed">힌트(이렇게 말해보세요), 번역, 다시 천천히, 타이핑 입력. 실시간 자막은 끌 수도 있습니다.</p></div>
+                <div class="glass rounded-2xl p-5"><div class="flex items-center gap-3 mb-3"><span class="step-num">4</span><p class="font-bold">리포트 받기</p></div><p class="text-sm text-white/60 leading-relaxed">종합 점수와 CEFR, 유창성·문법·어휘, 고쳐 말할 문장, 가져갈 표현까지. 표현은 노트에 저장해 복습합니다.</p></div>
+            </div>
+        </section>
+
+        <!-- 기능 -->
+        <section id="features" class="py-14 reveal">
+            <h2 class="text-2xl md:text-3xl font-extrabold text-center">전화영어에 필요한 건 다 넣었습니다</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-10">
+                {% set feats = [
+                    ('fa-phone-volume', 'text-emerald-300', '진짜 사람 같은 통화', '말버릇, 리액션, 끼어들기까지. 상대는 자기가 AI라고 말하지 않고, 작별 인사 후 스스로 전화를 끊습니다.'),
+                    ('fa-calendar-day', 'text-blue-300', '매일 바뀌는 주제', '60개 주제 뱅크에서 매일 6개를 추천하고, 롤플레이 시나리오 16개와 내 기록 기반 AI 맞춤 추천까지.'),
+                    ('fa-clipboard-check', 'text-amber-300', '말하기 평가 리포트', '종합 점수, CEFR, 5개 영역 점수, 교정 문장, 유용한 표현, 군말 분석, 다음 통화 목표.'),
+                    ('fa-bookmark', 'text-pink-300', '표현 노트 & 복습 퀴즈', '리포트에서 저장한 표현을 원어민 발음으로 듣고, 플래시카드로 복습합니다.'),
+                    ('fa-clock-rotate-left', 'text-purple-300', '통화 기록 전체 조회', '대화 전문, 문장별 번역, 검색·필터·북마크·메모. 같은 주제로 다시 걸기.'),
+                    ('fa-chart-line', 'text-cyan-300', '성장 대시보드', '연속 일수, 하루 목표, 14일 통화량, 점수 추이를 한눈에.'),
+                    ('fa-sliders', 'text-orange-300', '내 수준에 맞게', '초급·중급·고급, 교정 방식(자연스럽게 / 적극 / 없음), 말하기 속도, 핸즈프리 또는 누르고 말하기.'),
+                    ('fa-gem', 'text-blue-200', 'OpenAI 또는 Gemini', '통화마다 제공자와 모델, 목소리를 고르고 예상 요금을 확인합니다. Gemini 무료 티어면 사실상 무료.'),
+                    ('fa-mobile-screen', 'text-emerald-200', '모바일 우선 · 앱처럼', '하단 탭, 안전 영역 대응, 화면 꺼짐 방지, 진동, 홈 화면 설치. 다크/라이트와 4가지 테마.'),
+                ] %}
+                {% for icon, color, title, desc in feats %}
+                <div class="glass feature-card rounded-2xl p-5">
+                    <div class="w-10 h-10 rounded-xl glass-soft flex items-center justify-center mb-3"><i class="fas {{ icon }} {{ color }}"></i></div>
+                    <p class="font-bold">{{ title }}</p>
+                    <p class="text-sm text-white/60 mt-1.5 leading-relaxed">{{ desc }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- 페르소나 -->
+        <section id="personas" class="py-14 reveal">
+            <h2 class="text-2xl md:text-3xl font-extrabold text-center">오늘은 누구와 통화할까요?</h2>
+            <p class="text-white/50 text-center mt-2 text-sm">상대마다 말투, 억양, 역할이 다릅니다. 직접 만들 수도 있어요.</p>
+            <div class="flex gap-3 overflow-x-auto no-scrollbar mt-8 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-4 lg:grid-cols-6">
+                {% for p in personas %}
+                <div class="glass rounded-2xl p-4 flex-shrink-0 w-[160px] md:w-auto">
+                    <div class="w-11 h-11 rounded-xl bg-gradient-to-br {{ p.gradient }} flex items-center justify-center text-2xl shadow-lg mb-2">{{ p.emoji }}</div>
+                    <p class="font-bold text-sm">{{ p.name }}</p>
+                    <p class="text-[11px] text-white/50">{{ p.title }} · {{ p.accent }}</p>
+                    <p class="text-[11px] text-white/45 mt-2 leading-snug line-clamp-2">{{ p.tagline }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- 비용 -->
+        <section id="pricing" class="py-14 reveal">
+            <h2 class="text-2xl md:text-3xl font-extrabold text-center">구독료는 없습니다. 쓴 만큼만.</h2>
+            <p class="text-white/50 text-center mt-2 text-sm">내 API 키로 직접 결제하니 중간 마진이 없습니다. 10분 통화 기준 추정치입니다.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-10">
+                <div class="glass rounded-2xl p-6 border border-blue-400/30 relative"><span class="chip absolute -top-3 left-5 text-blue-200 border-blue-400/40 bg-[#0f1424]">가성비 추천</span><p class="font-bold text-lg"><i class="fas fa-gem text-blue-300 mr-1"></i>Google Gemini Live</p><p class="text-3xl font-extrabold mt-3">$0.12<span class="text-base text-white/50 font-semibold">~0.32</span></p><p class="text-xs text-white/50 mt-1">AI Studio 무료 티어 한도 내에서는 <b class="text-emerald-300">$0</b></p><ul class="text-sm text-white/65 mt-4 space-y-1.5"><li><i class="fas fa-check text-emerald-300 mr-2"></i>자연스러운 30여 종 목소리</li><li><i class="fas fa-check text-emerald-300 mr-2"></i>끼어들기·감정 톤 지원</li><li><i class="fas fa-check text-emerald-300 mr-2"></i>평가 리포트 1회 약 $0.003</li></ul></div>
+                <div class="glass rounded-2xl p-6"><p class="font-bold text-lg"><i class="fas fa-bolt text-emerald-300 mr-1"></i>OpenAI gpt-realtime</p><p class="text-3xl font-extrabold mt-3">$0.32<span class="text-base text-white/50 font-semibold">~0.45</span></p><p class="text-xs text-white/50 mt-1">mini 모델은 $0.12~0.16</p><ul class="text-sm text-white/65 mt-4 space-y-1.5"><li><i class="fas fa-check text-emerald-300 mr-2"></i>가장 사람 같은 목소리 (Marin, Cedar)</li><li><i class="fas fa-check text-emerald-300 mr-2"></i>가장 낮은 응답 지연</li><li><i class="fas fa-check text-emerald-300 mr-2"></i>평가 리포트 1회 약 $0.01</li></ul></div>
+                <div class="glass rounded-2xl p-6"><p class="font-bold text-lg"><i class="fas fa-calculator text-amber-300 mr-1"></i>한 달 감 잡기</p><p class="text-sm text-white/65 mt-3 leading-relaxed">하루 10분씩 매일 통화하면</p><ul class="text-sm text-white/75 mt-2 space-y-2"><li class="flex justify-between border-b border-white/10 pb-2"><span>Gemini (무료 티어)</span><b class="text-emerald-300">$0</b></li><li class="flex justify-between border-b border-white/10 pb-2"><span>Gemini (유료)</span><b>$4~10</b></li><li class="flex justify-between border-b border-white/10 pb-2"><span>OpenAI mini</span><b>$4~5</b></li><li class="flex justify-between"><span>OpenAI 최고 음질</span><b>$10~14</b></li></ul><p class="text-[11px] text-white/40 mt-3">공개 단가 기준 추정. 실제 청구는 각 제공자 대시보드 기준입니다.</p></div>
+            </div>
+        </section>
+
+        <!-- FAQ -->
+        <section class="py-14 reveal">
+            <h2 class="text-2xl md:text-3xl font-extrabold text-center">자주 묻는 질문</h2>
+            <div class="max-w-3xl mx-auto mt-8 space-y-3">
+                {% set faqs = [
+                    ('정말 AI인지 모를 정도인가요?', '상대는 자신이 AI라고 말하지 않고, 사람처럼 말버릇과 리액션을 씁니다. 다만 목소리 자연스러움은 고른 모델에 따라 다릅니다. OpenAI gpt-realtime의 Marin/Cedar 목소리가 현재 가장 사람 같고, Gemini도 충분히 자연스럽습니다.'),
+                    ('API 키가 꼭 필요한가요?', '네. 이 서비스는 구독료 대신 사용자 본인의 OpenAI 또는 Gemini 키로 동작합니다. Gemini는 Google AI Studio에서 무료로 키를 만들 수 있어 결제 없이 시작할 수 있습니다. 키는 서버에서 임시 토큰을 만드는 데만 쓰이고 브라우저로 전달되지 않습니다.'),
+                    ('아이폰 사파리에서도 되나요?', '네. 모바일 웹을 기준으로 만들었습니다. 사파리 공유 → "홈 화면에 추가"로 앱처럼 설치하면 전체 화면으로 통화할 수 있습니다. 이어폰을 끼면 에코 없이 훨씬 자연스럽습니다.'),
+                    ('발음도 평가하나요?', '평가는 통화 중 음성 인식된 텍스트를 기준으로 유창성·문법·어휘·구성·상호작용을 봅니다. 발음 자체를 직접 채점하지는 않지만, 인식이 자주 틀린 단어가 있으면 리포트에서 언급합니다.'),
+                    ('초급자도 할 수 있나요?', '레벨을 초급으로 두면 상대가 천천히, 짧은 문장으로 말하고 막히면 선택지를 제안합니다. "다정한 할머니"나 "영어 튜터" 상대가 특히 편하고, 필요하면 한국어 힌트도 허용할 수 있습니다.'),
+                ] %}
+                {% for q, a in faqs %}
+                <details class="glass rounded-2xl p-4 group">
+                    <summary class="font-bold cursor-pointer list-none flex items-center justify-between"><span>{{ q }}</span><i class="fas fa-chevron-down text-xs text-white/40 group-open:rotate-180 transition"></i></summary>
+                    <p class="text-sm text-white/65 mt-3 leading-relaxed">{{ a }}</p>
+                </details>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- CTA -->
+        <section class="py-16 text-center reveal">
+            <div class="glass-strong rounded-3xl p-8 md:p-12 relative overflow-hidden">
+                <div class="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-gradient-to-br from-emerald-500/30 to-blue-500/20 blur-3xl pointer-events-none"></div>
+                <h2 class="text-2xl md:text-4xl font-extrabold relative">오늘 첫 통화를 걸어보세요.</h2>
+                <p class="text-white/60 mt-3 relative">가입은 1분, 첫 통화는 5분이면 충분합니다.</p>
+                <div class="flex flex-wrap justify-center gap-3 mt-7 relative">
+                    <a href="/signup" class="btn-call px-7 py-3.5 rounded-2xl font-extrabold text-base inline-flex items-center gap-2"><i class="fas fa-phone"></i> 무료로 시작하기</a>
+                    <a href="/guide/openai" class="btn-ghost px-6 py-3.5 rounded-2xl font-bold text-base">API 키 발급 방법</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="border-t border-white/10 py-8 text-center text-xs text-white/40" style="padding-bottom: calc(32px + var(--safe-bottom));">
+        <p class="font-bold text-white/60 mb-1">Eng2Mouth</p>
+        <p>Made by <a href="https://yojun313.github.io" target="_blank" class="hover:text-blue-300 transition font-medium"><i class="fas fa-globe"></i> Yojun Moon</a> · <a href="/login" class="hover:text-white">로그인</a> · <a href="/signup" class="hover:text-white">회원가입</a></p>
+    </footer>
+
+    <!-- 모바일 하단 고정 CTA -->
+    <div class="fixed left-0 right-0 bottom-0 z-40 p-3 sm:hidden bg-gradient-to-t from-[#05070f] via-[#05070f]/85 to-transparent" style="padding-bottom: calc(12px + var(--safe-bottom));">
+        <a href="/signup" class="btn-call w-full py-3.5 rounded-2xl font-extrabold text-base flex items-center justify-center gap-2"><i class="fas fa-phone"></i> 무료로 시작하기</a>
+    </div>
+
+    <script>
+        // 스크롤 등장
+        const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.12 });
+        document.querySelectorAll('.reveal:not(.in)').forEach((el) => io.observe(el));
+        // 폰 목업 자막 순환 + 타이머
+        const caps = document.querySelectorAll('#captions span'); let ci = 0;
+        setInterval(() => { caps[ci].classList.remove('show'); ci = (ci + 1) % caps.length; caps[ci].classList.add('show'); }, 3800);
+        let t = 222; const timer = document.getElementById('demoTimer');
+        setInterval(() => { t++; timer.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; }, 1000);
+    </script>
+    <script src="/static/shared/theme.js"></script>
+</body>
+</html>

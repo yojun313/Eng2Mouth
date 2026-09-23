@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Settings - Eng2Mouth{% endblock %}
+{% block header %}<i class="fas fa-gear mr-2 text-blue-400"></i>설정{% endblock %}
+{% block header_actions %}<span id="saveState" class="text-[11px] text-white/40 hidden md:inline"><i class="fas fa-circle-check text-emerald-400 mr-1"></i>자동 저장</span>{% endblock %}
+{% block content %}
+<div class="flex-1 overflow-y-auto p-4 md:p-8 page-scroll">
+    <div class="max-w-4xl mx-auto space-y-6">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="glass p-5 rounded-2xl flex items-center justify-between"><div><p class="text-[10px] text-white/40 uppercase font-bold mb-1">Eng2Mouth 누적 사용 요금 (추정)</p><h3 class="text-2xl font-mono font-bold text-blue-300" id="totalUsageText">$0.0000</h3></div><div class="bg-blue-500/10 p-3.5 rounded-xl"><i class="fas fa-file-invoice-dollar text-2xl text-blue-400"></i></div></div>
+            <div class="glass p-5 rounded-2xl flex items-center justify-between"><div><p class="text-[10px] text-white/40 uppercase font-bold mb-1">OpenAI 공식 잔액</p><a href="https://platform.openai.com/settings/organization/billing/overview" target="_blank" class="inline-flex items-center mt-1 text-blue-300 hover:underline font-bold text-sm">결제 대시보드 <i class="fas fa-external-link-alt ml-2 text-xs"></i></a></div><div class="bg-emerald-500/10 p-3.5 rounded-xl"><i class="fas fa-wallet text-2xl text-emerald-400"></i></div></div>
+        </div>
+
+        <!-- 프로필 -->
+        <section class="glass rounded-2xl overflow-hidden">
+            <div class="p-4 md:p-5 border-b border-white/10 glass-soft flex items-center gap-3"><i class="fas fa-user-circle text-purple-400"></i><h3 class="font-bold">프로필</h3></div>
+            <div class="p-5 md:p-6 flex flex-col sm:flex-row items-center gap-5">
+                <label class="relative group cursor-pointer"><div class="w-24 h-24 rounded-full border-4 border-white/10 overflow-hidden bg-gray-800 shadow-2xl"><img id="profilePreview" src="{{ settings.profile_img }}" class="w-full h-full object-cover"></div><span class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition rounded-full"><i class="fas fa-camera text-xl"></i></span><input type="file" id="profileInput" class="hidden" accept="image/*"></label>
+                <div class="flex-1 text-center sm:text-left"><h4 class="text-lg font-bold">{{ username }}</h4><p class="text-white/40 text-xs">{{ settings.email or '이메일 없음' }}</p><p class="text-white/40 text-xs mt-2">사진을 누르면 바로 변경됩니다.</p>
+                    <button id="pwBtn" class="btn-ghost px-3 py-1.5 rounded-lg text-xs font-bold mt-3"><i class="fas fa-key mr-1"></i>비밀번호 변경</button></div>
+            </div>
+        </section>
+
+        <!-- 제공자 / API -->
+        <section class="glass rounded-2xl overflow-hidden" id="api">
+            <div class="p-4 md:p-5 border-b border-white/10 glass-soft flex items-center gap-3"><i class="fas fa-key text-blue-400"></i><h3 class="font-bold">AI 제공자 & API Key</h3></div>
+            <div class="p-5 md:p-6 space-y-5">
+                <div>
+                    <label class="block text-xs font-bold text-white/70 mb-2">기본 통화 제공자 <span class="text-white/35 font-normal">(통화 걸 때마다 바꿀 수 있어요)</span></label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button type="button" data-v="openai" class="prov-opt opt glass-soft rounded-xl p-3 text-left border border-transparent transition"><p class="text-sm font-bold"><i class="fas fa-bolt mr-1 text-emerald-300"></i>OpenAI gpt-realtime</p><p class="text-[10px] text-white/45 mt-0.5">가장 사람 같은 목소리 · 10분 약 $0.35~0.5 (mini $0.15)</p></button>
+                        <button type="button" data-v="gemini" class="prov-opt opt glass-soft rounded-xl p-3 text-left border border-transparent transition"><p class="text-sm font-bold"><i class="fas fa-gem mr-1 text-blue-300"></i>Google Gemini Live</p><p class="text-[10px] text-white/45 mt-0.5">저렴 · 10분 약 $0.12~0.35 · AI Studio 무료 티어 내 $0</p></button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="glass-soft rounded-xl p-4 space-y-2">
+                        <div class="flex items-center justify-between"><p class="text-xs font-bold text-white/80"><i class="fas fa-bolt mr-1 text-emerald-300"></i>OpenAI API Key</p><a href="/guide/openai#openai" target="_blank" class="text-[11px] text-blue-300 hover:underline">발급 방법</a></div>
+                        <div class="flex gap-2"><input type="password" id="apiKeyInput" placeholder="{{ 'sk-… (' + settings_masked + ' 저장됨)' if settings_masked else 'sk-...' }}" autocomplete="off" class="flex-1 min-w-0 glass-input rounded-xl px-3 py-2.5 font-mono text-sm"><button id="verifyKeyBtn" class="btn-ghost px-3 rounded-xl text-xs font-bold whitespace-nowrap">키 확인</button></div>
+                        <div id="keyStatus" class="text-xs"></div>
+                    </div>
+                    <div class="glass-soft rounded-xl p-4 space-y-2">
+                        <div class="flex items-center justify-between"><p class="text-xs font-bold text-white/80"><i class="fas fa-gem mr-1 text-blue-300"></i>Gemini API Key</p><a href="/guide/openai#gemini" target="_blank" class="text-[11px] text-blue-300 hover:underline">발급 방법</a></div>
+                        <div class="flex gap-2"><input type="password" id="geminiKeyInput" placeholder="{{ 'AIza… (' + gemini_masked + ' 저장됨)' if gemini_masked else 'AIza...' }}" autocomplete="off" class="flex-1 min-w-0 glass-input rounded-xl px-3 py-2.5 font-mono text-sm"><button id="verifyGeminiBtn" class="btn-ghost px-3 rounded-xl text-xs font-bold whitespace-nowrap">키 확인</button></div>
+                        <div id="geminiKeyStatus" class="text-xs"></div>
+                    </div>
+                </div>
+                <p class="text-[11px] text-white/45 leading-relaxed">키는 본인 계정에만 저장되며 통화용 임시 토큰 발급, 평가, 힌트/번역, 표현 듣기에 사용됩니다. 브라우저로 실제 키가 내려가지 않습니다. 평가·힌트·번역은 기본 제공자의 키를 쓰고, 그 키가 없으면 다른 쪽 키로 자동 전환됩니다.</p>
+            </div>
+        </section>
+
+        <!-- 통화 상대 -->
+        <section class="glass rounded-2xl overflow-hidden" id="persona">
+            <div class="p-4 md:p-5 border-b border-white/10 glass-soft flex items-center gap-3"><i class="fas fa-user-group text-pink-400"></i><h3 class="font-bold">기본 통화 상대</h3></div>
+            <div class="p-5 md:p-6 space-y-4">
+                <div id="personaGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"></div>
+                <div id="customPersonaBox" class="glass-soft rounded-xl p-4 space-y-2 hidden">
+                    <p class="text-xs font-bold text-white/70">나만의 상대 만들기</p>
+                    <input id="customName" maxlength="40" class="w-full glass-input rounded-xl px-3 py-2.5 text-sm" placeholder="이름 (예: Alex)" value="{{ settings.custom_persona.name if settings.custom_persona else '' }}">
+                    <textarea id="customDesc" rows="4" maxlength="1200" class="w-full glass-input rounded-xl px-3 py-2.5 text-sm resize-none" placeholder="영어 또는 한국어로 자유롭게. 예) 뉴욕에 사는 32살 스타트업 디자이너. 유머러스하고 질문을 많이 함. 내 관심사는 러닝과 사진.">{{ settings.custom_persona.description if settings.custom_persona else '' }}</textarea>
+                    <p class="text-[11px] text-white/40">이 설명은 AI 추천 주제를 만들 때 '내 관심사' 로도 활용됩니다.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-white/70 mb-2">목소리</label>
+                    <div id="voiceGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                        {% for v in app.VOICES %}<button type="button" data-v="{{ v.id }}" class="voice-opt opt glass-soft rounded-xl p-2.5 text-left border border-transparent hover:border-white/20 transition"><p class="text-sm font-bold flex items-center gap-1.5"><i class="fas {{ 'fa-venus text-pink-300' if v.gender == 'f' else 'fa-mars text-blue-300' if v.gender == 'm' else 'fa-genderless text-white/50' }} text-[10px]"></i>{{ v.label }}</p><p class="text-[10px] text-white/45 leading-tight">{{ v.desc }}</p></button>{% endfor %}
+                    </div>
+                    <p class="text-[11px] text-white/40 mt-2">OpenAI 통화용. 페르소나마다 어울리는 기본 목소리가 있지만, 여기서 고른 목소리가 항상 우선합니다. Marin / Cedar 가 가장 사람 같습니다.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-white/70 mb-2">Gemini 목소리</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                        {% for v in app.GEMINI_VOICES %}<button type="button" data-v="{{ v.id }}" class="gvoice-opt opt glass-soft rounded-xl p-2.5 text-left border border-transparent hover:border-white/20 transition"><p class="text-sm font-bold flex items-center gap-1.5"><i class="fas {{ 'fa-venus text-pink-300' if v.gender == 'f' else 'fa-mars text-blue-300' }} text-[10px]"></i>{{ v.label }}</p><p class="text-[10px] text-white/45 leading-tight">{{ v.desc }}</p></button>{% endfor %}
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-1"><label class="text-xs font-bold text-white/70">말하기 속도</label><span class="text-xs text-white/60 tabular" id="speedVal">1.0x</span></div>
+                    <input type="range" id="speedRange" min="0.6" max="1.5" step="0.05" value="{{ settings.speed }}" class="w-full accent-blue-500">
+                    <div class="flex justify-between text-[10px] text-white/35"><span>천천히 0.6x</span><span>보통 1.0x</span><span>빠르게 1.5x</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 학습 -->
+        <section class="glass rounded-2xl overflow-hidden">
+            <div class="p-4 md:p-5 border-b border-white/10 glass-soft flex items-center gap-3"><i class="fas fa-graduation-cap text-emerald-400"></i><h3 class="font-bold">학습 방식</h3></div>
+            <div class="p-5 md:p-6 space-y-5">
+                <div><label class="block text-xs font-bold text-white/70 mb-2">내 레벨</label><div class="grid grid-cols-3 gap-2">{% for l in app.LEVELS %}<button type="button" data-v="{{ l.id }}" class="level-opt opt glass-soft rounded-xl p-3 text-center border border-transparent transition"><p class="text-sm font-bold">{{ l.short }}</p><p class="text-[10px] text-white/45">{{ l.label.split(' ')[1] }}</p></button>{% endfor %}</div></div>
+                <div><label class="block text-xs font-bold text-white/70 mb-2">통화 중 교정 방식</label><div class="grid grid-cols-1 sm:grid-cols-3 gap-2">{% for c in app.CORRECTION_MODES %}<button type="button" data-v="{{ c.id }}" class="corr-opt opt glass-soft rounded-xl p-3 text-left border border-transparent transition"><p class="text-sm font-bold">{{ c.label }}</p><p class="text-[10px] text-white/45 leading-tight mt-0.5">{{ c.desc }}</p></button>{% endfor %}</div></div>
+                <div><label class="block text-xs font-bold text-white/70 mb-2">말하기 방식</label><div class="grid grid-cols-2 gap-2"><button type="button" data-v="auto" class="turn-opt opt glass-soft rounded-xl p-3 text-left border border-transparent transition"><p class="text-sm font-bold"><i class="fas fa-wave-square mr-1 text-emerald-300"></i>핸즈프리</p><p class="text-[10px] text-white/45 mt-0.5">실제 통화처럼 말이 끝나면 상대가 이어 말합니다. 끼어들기도 가능.</p></button><button type="button" data-v="ptt" class="turn-opt opt glass-soft rounded-xl p-3 text-left border border-transparent transition"><p class="text-sm font-bold"><i class="fas fa-hand-pointer mr-1 text-blue-300"></i>누르고 말하기</p><p class="text-[10px] text-white/45 mt-0.5">버튼을 누른 동안만 녹음. 시끄러운 곳, 생각할 시간이 필요할 때.</p></button></div></div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label class="flex items-start gap-3 glass-soft rounded-xl p-3 cursor-pointer"><input type="checkbox" id="captionsChk" class="mt-1 w-4 h-4 accent-blue-500" {{ 'checked' if settings.captions else '' }}><span class="text-sm"><b>실시간 자막</b><span class="block text-[11px] text-white/45">상대와 내 말을 통화 화면에 글로 보여줍니다. 끄면 더 진짜 통화 같아요.</span></span></label>
+                    <label class="flex items-start gap-3 glass-soft rounded-xl p-3 cursor-pointer"><input type="checkbox" id="koreanChk" class="mt-1 w-4 h-4 accent-blue-500" {{ 'checked' if settings.allow_korean else '' }}><span class="text-sm"><b>막힐 때 한국어 힌트 허용</b><span class="block text-[11px] text-white/45">"how do I say…" 하면 단어 하나 정도 한국어로 알려줍니다.</span></span></label>
+                </div>
+                <div><div class="flex items-center justify-between mb-1"><label class="text-xs font-bold text-white/70">하루 목표</label><span class="text-xs text-white/60 tabular"><span id="goalVal">{{ settings.daily_goal_min }}</span>분</span></div><input type="range" id="goalRange" min="3" max="60" step="1" value="{{ settings.daily_goal_min }}" class="w-full accent-emerald-500"></div>
+            </div>
+        </section>
+
+        <!-- 모델 -->
+        <section class="glass rounded-2xl overflow-hidden">
+            <div class="p-4 md:p-5 border-b border-white/10 glass-soft flex items-center gap-3"><i class="fas fa-microchip text-amber-400"></i><h3 class="font-bold">모델 & 요금</h3></div>
+            <div class="p-5 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div><label class="block text-xs font-bold text-white/70 mb-2">통화 음성 모델</label><div class="space-y-2">{% for m in app.REALTIME_MODELS %}<button type="button" data-v="{{ m.id }}" class="rt-opt opt glass-soft rounded-xl p-3 text-left w-full border border-transparent transition"><p class="text-sm font-bold">{{ m.label }}</p><p class="text-[10px] text-white/45">{{ m.desc }}</p></button>{% endfor %}</div></div>
+                <div><label class="block text-xs font-bold text-white/70 mb-2">OpenAI 평가·힌트·번역 모델</label><select id="chatModelSel" class="w-full glass-input rounded-xl px-3 py-3 text-sm">{% for m in app.CHAT_MODELS %}<option value="{{ m.id }}" class="bg-[#0f1424]">{{ m.label }}</option>{% endfor %}</select><p class="text-[11px] text-white/40 mt-2">평가 리포트 1회 약 $0.005~0.02 (GPT-5 mini 기준). 힌트/번역은 $0.001 미만.</p></div>
+                <div><label class="block text-xs font-bold text-white/70 mb-2">Gemini Live(통화) 모델</label><select id="geminiLiveSel" class="w-full glass-input rounded-xl px-3 py-3 text-sm"><option value="" class="bg-[#0f1424]">자동 (키로 접근 가능한 최신 native-audio)</option></select><p class="text-[11px] text-white/40 mt-2">키를 등록하고 "키 확인"을 누르면 접근 가능한 모델 목록이 채워집니다.</p></div>
+                <div><label class="block text-xs font-bold text-white/70 mb-2">Gemini 평가·힌트·번역 모델</label><select id="geminiChatSel" class="w-full glass-input rounded-xl px-3 py-3 text-sm"><option value="{{ app.GEMINI_FAST_MODEL }}" class="bg-[#0f1424]">{{ app.GEMINI_FAST_MODEL }} (가장 저렴)</option><option value="{{ app.GEMINI_CHAT_MODEL }}" class="bg-[#0f1424]">{{ app.GEMINI_CHAT_MODEL }} (기본)</option><option value="gemini-2.5-pro" class="bg-[#0f1424]">gemini-2.5-pro (가장 꼼꼼)</option></select><p class="text-[11px] text-white/40 mt-2">평가 1회 약 $0.003 (Flash) · 무료 티어 내에서는 $0.</p></div>
+            </div>
+        </section>
+
+        <!-- 데이터 -->
+        <section class="glass rounded-2xl overflow-hidden">
+            <div class="p-4 md:p-5 border-b border-white/10 glass-soft flex items-center gap-3"><i class="fas fa-database text-white/60"></i><h3 class="font-bold">데이터 & 계정</h3></div>
+            <div class="p-5 md:p-6 flex flex-wrap gap-2">
+                <a href="/api/user/export" download="eng2mouth-export.json" class="btn-ghost px-4 py-2.5 rounded-xl text-xs font-bold"><i class="fas fa-download mr-1"></i>내 데이터 내보내기 (JSON)</a>
+                <button id="installBtn" class="btn-ghost px-4 py-2.5 rounded-xl text-xs font-bold hidden"><i class="fas fa-mobile-screen mr-1"></i>홈 화면에 앱 설치</button>
+                <button id="deleteAccountBtn" class="ml-auto px-4 py-2.5 rounded-xl text-xs font-bold text-red-300 hover:bg-red-500/10 border border-red-500/20"><i class="fas fa-user-xmark mr-1"></i>계정 삭제</button>
+            </div>
+        </section>
+        <p class="text-[10px] text-white/30 text-center pb-4">iPhone 에서는 Safari 공유 → "홈 화면에 추가" 로 앱처럼 설치할 수 있습니다.</p>
+    </div>
+</div>
+
+<div id="pwModal" class="e2m-modal-backdrop" hidden><div class="e2m-modal glass-strong p-5 max-w-sm"><h3 class="font-bold mb-4"><i class="fas fa-key mr-2 text-blue-300"></i>비밀번호 변경</h3><form id="pwForm" class="space-y-3"><input type="password" id="pwCur" class="w-full glass-input rounded-xl px-3 py-3 text-sm" placeholder="현재 비밀번호" required autocomplete="current-password"><input type="password" id="pwNew" class="w-full glass-input rounded-xl px-3 py-3 text-sm" placeholder="새 비밀번호 (6자 이상)" required minlength="6" autocomplete="new-password"><div class="flex gap-2 pt-1"><button type="button" id="pwCancel" class="btn-ghost flex-1 py-2.5 rounded-xl text-sm">취소</button><button class="btn-glow flex-1 py-2.5 rounded-xl text-sm font-bold">변경</button></div></form></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+    const S = {{ settings | tojson }};
+    const PERSONAS = {{ personas | tojson }};
+    const state = { persona: S.persona, voice: S.voice, gemini_voice: S.gemini_voice, provider: S.provider || 'openai', level: S.level, correction_mode: S.correction_mode, turn_mode: S.turn_mode, realtime_model: S.realtime_model };
+    let saveTimer = null, toastShown = 0;
+    async function save(patch, delay = 0) {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(async () => { try { await api('/api/settings', { method: 'POST', body: patch }); const el = document.getElementById('saveState'); if (el) { el.innerHTML = `<i class="fas fa-circle-check text-emerald-400 mr-1"></i>저장됨 ${new Date().toLocaleTimeString('ko-KR')}`; } toast('저장됨', true, 1200); } catch (e) { toast('저장 실패: ' + e.message, false); } }, delay);
+    }
+    function mark(cls, val) { document.querySelectorAll('.' + cls).forEach((b) => { const on = b.dataset.v === String(val); b.classList.toggle('border-blue-400/70', on); b.classList.toggle('bg-blue-500/15', on); b.classList.toggle('border-transparent', !on); }); }
+    function bindOpts(cls, key) { document.querySelectorAll('.' + cls).forEach((b) => b.addEventListener('click', () => { state[key] = b.dataset.v; mark(cls, b.dataset.v); save({ [key]: b.dataset.v }); })); mark(cls, state[key]); }
+    bindOpts('voice-opt', 'voice'); bindOpts('gvoice-opt', 'gemini_voice'); bindOpts('prov-opt', 'provider'); bindOpts('level-opt', 'level'); bindOpts('corr-opt', 'correction_mode'); bindOpts('turn-opt', 'turn_mode'); bindOpts('rt-opt', 'realtime_model');
+
+    // 페르소나
+    function renderPersonas() {
+        document.getElementById('personaGrid').innerHTML = PERSONAS.map((p) => `<button type="button" data-id="${p.id}" class="persona-card glass-soft rounded-xl p-3 text-left border ${p.id === state.persona ? 'selected' : 'border-transparent'}"><div class="flex items-center gap-2"><div class="w-9 h-9 rounded-lg bg-gradient-to-br ${p.gradient} flex items-center justify-center text-lg flex-shrink-0">${p.emoji}</div><div class="min-w-0"><p class="text-sm font-bold truncate">${esc(p.name)}</p><p class="text-[10px] text-white/45 truncate">${esc(p.title)}</p></div></div><p class="text-[10px] text-white/45 mt-2 leading-tight line-clamp-2">${esc(p.tagline)}</p></button>`).join('');
+        document.querySelectorAll('#personaGrid .persona-card').forEach((b) => b.addEventListener('click', () => { state.persona = b.dataset.id; renderPersonas(); save({ persona: b.dataset.id }); }));
+        document.getElementById('customPersonaBox').classList.toggle('hidden', state.persona !== 'custom');
+    }
+    renderPersonas();
+    ['customName', 'customDesc'].forEach((id) => document.getElementById(id).addEventListener('input', () => save({ custom_persona: { name: document.getElementById('customName').value, description: document.getElementById('customDesc').value } }, 900)));
+
+    // API key
+    const keyInput = document.getElementById('apiKeyInput');
+    keyInput.addEventListener('input', () => { const v = keyInput.value.trim(); if (v.length < 20) return; save({ openai_api_key: v }, 800); document.getElementById('keyStatus').innerHTML = '<span class="text-white/50">저장 중… 저장 후 "키 확인"으로 검증해 보세요.</span>'; });
+    document.getElementById('verifyKeyBtn').addEventListener('click', async (e) => { const b = e.currentTarget; b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; const st = document.getElementById('keyStatus'); try { clearTimeout(saveTimer); if (keyInput.value.trim().length >= 20) await api('/api/settings', { method: 'POST', body: { openai_api_key: keyInput.value.trim() } }); const r = await api('/api/settings/verify-key?provider=openai', { method: 'POST' }); st.innerHTML = `<span class="text-emerald-300"><i class="fas fa-circle-check mr-1"></i>유효한 키</span> <span class="text-white/50">gpt-realtime ${r.realtime ? '✅' : '⚠️'} · mini ${r.realtime_mini ? '✅' : '⚠️'} · 평가 모델 ${r.chat ? '✅' : '⚠️'}</span>`; } catch (err) { st.innerHTML = `<span class="text-red-300"><i class="fas fa-circle-xmark mr-1"></i>${esc(err.message)}</span>`; } finally { b.disabled = false; b.textContent = '키 확인'; } });
+    // Gemini key
+    const gInput = document.getElementById('geminiKeyInput');
+    gInput.addEventListener('input', () => { const v = gInput.value.trim(); if (v.length < 20) return; save({ gemini_api_key: v }, 800); document.getElementById('geminiKeyStatus').innerHTML = '<span class="text-white/50">저장 중… 저장 후 "키 확인"으로 검증해 보세요.</span>'; });
+    async function fillGeminiLiveModels() {
+        try { const d = await api('/api/models'); const sel = document.getElementById('geminiLiveSel'); const cur = S.gemini_live_model || ''; sel.innerHTML = (d.gemini.voice_models || []).map((m) => `<option value="${esc(m.id)}" ${m.id === cur ? 'selected' : ''}>${esc(m.label)}</option>`).join(''); if (cur && !(d.gemini.voice_models || []).some((m) => m.id === cur)) sel.insertAdjacentHTML('beforeend', `<option value="${esc(cur)}" selected>${esc(cur)}</option>`); const tsel = document.getElementById('geminiChatSel'); (d.gemini.text_models || []).forEach((m) => { if (![...tsel.options].some((o) => o.value === m.id)) tsel.insertAdjacentHTML('beforeend', `<option value="${esc(m.id)}">${esc(m.label)}</option>`); }); tsel.value = S.gemini_chat_model || tsel.value; } catch (e) { console.warn(e); }
+    }
+    document.getElementById('verifyGeminiBtn').addEventListener('click', async (e) => { const b = e.currentTarget; b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; const st = document.getElementById('geminiKeyStatus'); try { clearTimeout(saveTimer); if (gInput.value.trim().length >= 20) await api('/api/settings', { method: 'POST', body: { gemini_api_key: gInput.value.trim() } }); const r = await api('/api/settings/verify-key?provider=gemini', { method: 'POST' }); st.innerHTML = `<span class="text-emerald-300"><i class="fas fa-circle-check mr-1"></i>유효한 키</span> <span class="text-white/50">Live 모델 ${r.live_model ? '✅ ' + esc(r.live_model) : '⚠️ 없음'} · 평가 ${r.chat ? '✅' : '⚠️'} · TTS ${r.tts ? '✅' : '⚠️'}</span>`; fillGeminiLiveModels(); } catch (err) { st.innerHTML = `<span class="text-red-300"><i class="fas fa-circle-xmark mr-1"></i>${esc(err.message)}</span>`; } finally { b.disabled = false; b.textContent = '키 확인'; } });
+    document.getElementById('geminiLiveSel').addEventListener('change', (e) => save({ gemini_live_model: e.target.value }));
+    document.getElementById('geminiChatSel').value = S.gemini_chat_model || document.getElementById('geminiChatSel').value;
+    document.getElementById('geminiChatSel').addEventListener('change', (e) => save({ gemini_chat_model: e.target.value }));
+    if (S.has_gemini_key) fillGeminiLiveModels();
+
+    // 슬라이더 / 체크박스 / 셀렉트
+    const speed = document.getElementById('speedRange'); const sv = () => document.getElementById('speedVal').textContent = Number(speed.value).toFixed(2).replace(/0$/, '') + 'x'; sv(); speed.addEventListener('input', sv); speed.addEventListener('change', () => save({ speed: Number(speed.value) }));
+    const goal = document.getElementById('goalRange'); goal.addEventListener('input', () => document.getElementById('goalVal').textContent = goal.value); goal.addEventListener('change', () => save({ daily_goal_min: Number(goal.value) }));
+    document.getElementById('captionsChk').addEventListener('change', (e) => save({ captions: e.target.checked }));
+    document.getElementById('koreanChk').addEventListener('change', (e) => save({ allow_korean: e.target.checked }));
+    const cm = document.getElementById('chatModelSel'); cm.value = S.chat_model; cm.addEventListener('change', () => save({ chat_model: cm.value }));
+
+    // 프로필 사진
+    document.getElementById('profileInput').addEventListener('change', async (e) => { const f = e.target.files[0]; if (!f) return; const fd = new FormData(); fd.append('file', f); try { const d = await api('/api/user/profile-image', { method: 'POST', body: fd }); ['profilePreview', 'sidebarAvatar', 'headerAvatar'].forEach((id) => { const el = document.getElementById(id); if (el) el.src = d.url; }); toast('프로필 사진을 변경했어요'); } catch (err) { toast(err.message, false); } });
+    // 비밀번호
+    document.getElementById('pwBtn').addEventListener('click', () => document.getElementById('pwModal').hidden = false);
+    document.getElementById('pwCancel').addEventListener('click', () => document.getElementById('pwModal').hidden = true);
+    document.getElementById('pwForm').addEventListener('submit', async (e) => { e.preventDefault(); try { await api('/api/settings/password', { method: 'POST', body: { current_password: document.getElementById('pwCur').value, new_password: document.getElementById('pwNew').value } }); toast('비밀번호를 변경했어요'); document.getElementById('pwModal').hidden = true; } catch (err) { toast(err.message, false); } });
+    // 계정 삭제
+    document.getElementById('deleteAccountBtn').addEventListener('click', async () => { const pw = prompt('정말 계정을 삭제할까요? 모든 통화 기록과 표현이 삭제됩니다.\n확인을 위해 비밀번호를 입력하세요.'); if (!pw) return; const fd = new FormData(); fd.append('password', pw); try { await api('/api/user/account', { method: 'DELETE', body: fd }); location.href = '/login'; } catch (err) { toast(err.message, false); } });
+    // PWA 설치
+    let deferredPrompt = null; window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; document.getElementById('installBtn').classList.remove('hidden'); });
+    document.getElementById('installBtn').addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; document.getElementById('installBtn').classList.add('hidden'); });
+    api('/api/settings/usage').then((d) => document.getElementById('totalUsageText').textContent = `$${(d.total_spent_usd || 0).toFixed(4)}`).catch(() => {});
+    if (location.hash) { setTimeout(() => document.querySelector(location.hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200); }
+</script>
+{% endblock %}

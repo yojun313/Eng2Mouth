@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <script>(function(){try{var t=localStorage.getItem('e2m_theme_style');if(t&&t!=='default')document.documentElement.setAttribute('data-ui-theme',t);if(localStorage.getItem('theme')==='light'){document.documentElement.setAttribute('data-ui-theme-mode','light');}else{document.documentElement.classList.add('dark');}}catch(e){}})();</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <title>{% block title %}Eng2Mouth{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Eng2Mouth">
+    <meta name="theme-color" content="#05070f">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { theme: { extend: { colors: { dark: '#05070f', card: '#0f1424', sidebar: '#0a0e1a' } } } }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/shared/app.css">
+    <link rel="stylesheet" href="/static/shared/theme.css">
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-dark text-white font-sans h-[100dvh] flex overflow-hidden">
+
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden transition-opacity duration-300 opacity-0 md:hidden"></div>
+
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 glass-strong border-r border-white/10 flex flex-col transition-transform duration-300 transform -translate-x-full md:relative md:translate-x-0 flex-shrink-0" style="padding-top: var(--safe-top);">
+        <div class="p-5 border-b border-white/10 relative">
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-300 via-blue-400 to-purple-400 mb-4 tracking-tight flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs shadow-lg"><i class="fas fa-phone"></i></span>
+                Eng2Mouth
+            </h1>
+            <a href="/settings" class="flex items-center space-x-3 glass-soft p-2 rounded-xl hover:bg-white/5 transition">
+                <div class="w-10 h-10 rounded-full border border-blue-400/40 overflow-hidden bg-gray-800 flex-shrink-0 shadow-lg">
+                    <img id="sidebarAvatar" src="{{ settings.profile_img }}" class="w-full h-full object-cover" alt="">
+                </div>
+                <div class="min-w-0">
+                    <p class="text-xs text-white/40">Welcome,</p>
+                    <p class="text-sm font-bold text-white truncate">{{ username }}</p>
+                </div>
+            </a>
+            <button id="closeSidebarBtn" class="absolute top-5 right-5 md:hidden text-white/40 hover:text-white transition p-1" aria-label="닫기">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        {% set nav = [
+            ('home', '/', 'fa-house', '홈'),
+            ('call', '/call', 'fa-phone', '전화 걸기'),
+            ('topics', '/topics', 'fa-compass', '주제 탐색'),
+            ('history', '/history', 'fa-clock-rotate-left', '통화 기록'),
+            ('phrases', '/phrases', 'fa-bookmark', '표현 노트'),
+            ('settings', '/settings', 'fa-gear', '설정'),
+        ] %}
+        <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+            {% for key, href, icon, label in nav %}
+            <a href="{{ href }}" class="flex items-center px-3 py-2.5 rounded-xl transition {% if page == key %}bg-blue-500/15 text-blue-300 border border-blue-400/25 shadow-inner{% else %}text-white/50 hover:bg-white/5 hover:text-white{% endif %}">
+                <i class="fas {{ icon }} w-6 text-center"></i>
+                <span class="ml-2 font-medium text-sm">{{ label }}</span>
+                {% if key == 'call' %}<span class="ml-auto w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,.8)]"></span>{% endif %}
+            </a>
+            {% endfor %}
+        </nav>
+
+        <div class="p-4 border-t border-white/10 space-y-1">
+            <div class="px-3 py-2 text-[10px] text-white/35 flex items-center justify-between">
+                <span><i class="fas fa-coins mr-1"></i>누적 사용</span>
+                <span id="sidebarUsage" class="font-mono">—</span>
+            </div>
+            <a href="/about" class="flex items-center px-3 py-2 text-white/40 hover:bg-white/5 hover:text-white rounded-xl transition text-sm">
+                <i class="fas fa-circle-info w-6 text-center"></i>
+                <span class="ml-2">서비스 소개</span>
+            </a>
+            <a href="/logout" class="flex items-center px-3 py-2 text-red-300/90 hover:bg-red-500/10 hover:text-red-300 rounded-xl transition text-sm">
+                <i class="fas fa-sign-out-alt w-6 text-center"></i>
+                <span class="ml-2">Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 h-full relative">
+        <header class="glass border-b border-white/10 flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-20" style="padding-top: var(--safe-top); min-height: calc(56px + var(--safe-top));">
+            <div class="flex items-center min-w-0">
+                <button id="openSidebarBtn" class="md:hidden mr-3 text-white/60 hover:text-white transition p-1" aria-label="메뉴">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+                <h2 class="text-base font-semibold text-white/90 truncate">{% block header %}{% endblock %}</h2>
+            </div>
+            <div class="flex items-center gap-2 md:gap-3">
+                {% block header_actions %}{% endblock %}
+                <button id="themeSettingsBtn" class="theme-settings-btn" type="button" title="테마 설정" aria-label="테마 설정"><i class="fas fa-palette text-sm"></i></button>
+                <a href="/settings" class="hidden md:block w-8 h-8 rounded-full overflow-hidden border border-white/15 bg-gray-800">
+                    <img id="headerAvatar" src="{{ settings.profile_img }}" class="w-full h-full object-cover" alt="">
+                </a>
+            </div>
+        </header>
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <nav class="e2m-bottom-nav" aria-label="하단 메뉴">
+        <a href="/" class="{% if page == 'home' %}active{% endif %}"><i class="fas fa-house"></i><span>홈</span></a>
+        <a href="/history" class="{% if page == 'history' %}active{% endif %}"><i class="fas fa-clock-rotate-left"></i><span>기록</span></a>
+        <a href="/call" class="nav-call {% if page == 'call' %}active{% endif %}"><span class="call-orb"><i class="fas fa-phone"></i></span><span>전화</span></a>
+        <a href="/phrases" class="{% if page == 'phrases' %}active{% endif %}"><i class="fas fa-bookmark"></i><span>표현</span></a>
+        <a href="/settings" class="{% if page == 'settings' %}active{% endif %}"><i class="fas fa-gear"></i><span>설정</span></a>
+    </nav>
+
+    <div id="e2mToast" class="glass-strong px-4 py-2.5 rounded-xl text-sm shadow-2xl"></div>
+
+    {% include "_api_key_notice.html" %}
+
+    <script>
+        // ---- 공통: 사이드바 / 토스트 / fetch 헬퍼 / 사용량 ----
+        (function () {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            function toggle(show) {
+                if (show) { sidebar.classList.remove('-translate-x-full'); overlay.classList.remove('hidden'); setTimeout(() => overlay.classList.remove('opacity-0'), 10); }
+                else { sidebar.classList.add('-translate-x-full'); overlay.classList.add('opacity-0'); setTimeout(() => overlay.classList.add('hidden'), 300); }
+            }
+            document.getElementById('openSidebarBtn')?.addEventListener('click', () => toggle(true));
+            document.getElementById('closeSidebarBtn')?.addEventListener('click', () => toggle(false));
+            overlay?.addEventListener('click', () => toggle(false));
+        })();
+        let _toastTimer = null;
+        function toast(msg, ok = true, ms = 2200) {
+            const el = document.getElementById('e2mToast');
+            el.innerHTML = `<i class="fas ${ok ? 'fa-circle-check text-emerald-400' : 'fa-triangle-exclamation text-red-400'} mr-2"></i>${msg}`;
+            el.classList.add('show');
+            clearTimeout(_toastTimer);
+            _toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+        }
+        async function api(url, opts = {}) {
+            const o = { headers: {}, ...opts };
+            if (o.body && typeof o.body === 'object' && !(o.body instanceof FormData)) { o.headers['Content-Type'] = 'application/json'; o.body = JSON.stringify(o.body); }
+            const res = await fetch(url, o);
+            if (res.status === 401) { window.location.href = '/login'; throw new Error('로그인이 필요합니다.'); }
+            const ct = res.headers.get('content-type') || '';
+            const data = ct.includes('application/json') ? await res.json() : await res.text();
+            if (!res.ok) throw new Error((data && data.detail) ? (typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail)) : `오류 ${res.status}`);
+            return data;
+        }
+        function fmtDur(sec) { sec = Math.max(0, Math.round(sec || 0)); const m = Math.floor(sec / 60), s = sec % 60; return `${m}:${String(s).padStart(2, '0')}`; }
+        function fmtDate(iso) { if (!iso) return ''; const d = new Date(iso); return d.toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+        function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+        function scoreColor(v) { return v >= 80 ? '#34d399' : v >= 60 ? '#60a5fa' : v >= 40 ? '#fbbf24' : '#f87171'; }
+        api('/api/settings/usage').then((d) => { const el = document.getElementById('sidebarUsage'); if (el) el.textContent = `$${(d.total_spent_usd || 0).toFixed(3)}`; }).catch(() => {});
+        if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {})); }
+    </script>
+    {% block scripts %}{% endblock %}
+    <script src="/static/shared/theme.js"></script>
+</body>
+</html>
