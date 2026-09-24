@@ -1,53 +1,141 @@
-# Eng2Mouth — AI 전화영어
+# Eng2Mouth
 
-AI 원어민(실제로는 OpenAI Realtime 모델)과 **전화하듯** 영어 회화를 연습하고, 통화가 끝나면 말하기 평가 리포트를 받는 모바일 우선 웹앱입니다.
+Practice English speaking by **talking on the phone with an AI partner** that sounds and behaves like a real person. Pick who you want to call (a casual friend, a professor, an interviewer, a hotel receptionist…), choose today's topic, and dial. When you hang up, you get a speaking evaluation report with a score, CEFR level, corrections, and useful expressions to review later.
 
-## 주요 기능
-- 📞 **실시간 음성 통화** — OpenAI `gpt-realtime`(WebRTC) 또는 **Google Gemini Live**(WebSocket) 중 통화마다 선택. 발신음, 진동, 자연스러운 끼어들기, 통화 종료까지 진짜 전화처럼.
-- 💸 **제공자·모델·목소리·평가 모델을 통화 직전에 선택** — 10분 통화 예상 요금을 함께 표시하고, 선택값은 DB에 저장돼 다음 통화 기본값이 됨. Gemini 는 AI Studio 무료 티어로 $0 연습 가능.
-- 🧑‍🤝‍🧑 **페르소나 10종 + 직접 만들기** — 편한 친구, 교수, 튜터, 직장 동료, 상사, 면접관, 현지인, 할머니, 토론 파트너, 의사.
-- 🗓️ **매일 바뀌는 추천 주제** 6개 + 오늘의 롤플레이 + GPT 개인화 추천 4개 + 직접 입력 + 자유 대화. 주제 뱅크 60개, 롤플레이 시나리오 16개.
-- 📝 **통화 후 말하기 평가** — 종합 점수/CEFR, 유창성·문법·어휘·논리·상호작용, 잘한 점/보완점, 교정 문장, 가져갈 표현, 군말, 다음 목표.
-- 🎧 통화 중 보조: 실시간 자막, 힌트(이렇게 말해보세요), 번역, 다시 천천히, 타이핑 입력, 보류, 음소거, 누르고 말하기(PTT).
-- 📚 **표현 노트** — 리포트에서 저장 → TTS 듣기 → 플래시카드 복습 퀴즈.
-- 📈 대시보드 — 연속 일수, 하루 목표, 14일 통화량, 점수 추이, 최근 통화.
-- 🔎 **통화 기록** 전체 조회/검색/필터/북마크/메모, 대화 전문 + 문장별 번역, 같은 주제로 다시 통화.
-- 🎨 LecAI 와 동일한 테마 시스템(오로라/그라디언트 메시/애플 글래스/미니멀 + 다크/라이트), PWA(홈 화면 설치).
-- 🔐 회원가입(이메일 인증) / 로그인, 사용자별 OpenAI API Key, MongoDB 연동, 사용 요금 추정, 데이터 내보내기.
+Built as a mobile-first web app (installable as a PWA), using **OpenAI Realtime** or **Google Gemini Live** with each user's own API key. No subscription, no middleman.
 
-## 실행
+![Landing](./static/imgs/landing.png)
+![Dashboard](./static/imgs/dashboard.png)
+![Topics](./static/imgs/topics.png)
+![History](./static/imgs/history.png)
+
+---
+
+## 1. Features
+
+* **Real phone-call experience**: ringback tone, vibration on connect, screen wake lock, voice-reactive avatar, natural interruptions, and the partner hangs up by itself after saying goodbye (`end_call` tool). The partner never says it is an AI and speaks with fillers, backchannels and short turns.
+* **Two voice providers, chosen per call**: OpenAI `gpt-realtime` (WebRTC) or Google Gemini Live (WebSocket). The dial screen shows the estimated cost per 10 minutes for each provider and model; the choice (provider, voice model, voice, evaluation model, level, correction style, turn mode) is saved to the user's profile in MongoDB as the default for the next call.
+* **11 personas**: casual friend, professor, ESL tutor, coworker, manager, interviewer, local guide, grandma, debate partner, doctor, plus a fully custom persona described in free text.
+* **Daily topics**: 6 topics rotate every day from a bank of 60, plus a roleplay scenario of the day (16 scenarios), GPT-generated personal recommendations based on your history, custom topics and free talk.
+* **In-call assists**: live captions, hints ("say it like this" with Korean meaning), translation of the last sentence, "say it again slowly", typed input, hold, mute, and push-to-talk mode for noisy places.
+* **Speaking evaluation report**: overall score, CEFR level, fluency / grammar / vocabulary / coherence / interaction, strengths, improvements, corrected sentences, expressions worth stealing, filler-word analysis, goals for the next call.
+* **Phrasebook & review quiz**: save expressions from reports, listen to them with TTS, review with flashcards.
+* **Call history**: full transcripts with per-sentence translation, search, filters, bookmarks, notes, re-dial the same topic. Costs are shown in USD and KRW (daily exchange rate).
+* **Dashboard**: streak, daily goal ring, 14-day talk time, score trend, recent calls.
+* **Accounts & settings**: email-verified sign-up, per-user OpenAI / Gemini keys (never sent to the browser), profile image, level, correction style, voices, speaking speed, model selection, usage tracking, data export, account deletion.
+* **Same theme system as LecAI**: Aurora / Gradient Mesh / Apple Glass / Minimal Flat, dark & light mode, mobile bottom tab bar, safe-area aware layout.
+
+---
+
+## 2. System Requirements
+
+The server itself is a plain FastAPI app; all speech processing happens on the provider side, so no GPU or media tooling is required.
+
+* **Python 3.12+** (developed on 3.14, managed with [uv](https://docs.astral.sh/uv/)).
+* **MongoDB** for users, sessions, calls, phrases and daily picks.
+* **HTTPS in production**: browsers only allow microphone access on `https://` (or `localhost`).
+* Each user needs their own **OpenAI API key** and/or **Google Gemini API key** (Gemini has a free tier in AI Studio).
+
+---
+
+## 3. Installation
+
+### 1) Install uv (Ubuntu / Debian)
+
 ```bash
-uv sync
-cp .env.example .env   # 값 채우기
-python3 run.py          # 기본 포트 7005
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-## .env
-| 키 | 설명 |
-|---|---|
-| `PORT` | 서비스 포트 (기본 7005) |
-| `MONGO_*` | MongoDB 접속 정보 (DB: `eng2mouth`) |
-| `MAIL_SENDER`, `MAIL_PASSWORD` | Gmail SMTP (없으면 이메일 인증 없이 가입) |
-| `REALTIME_MODEL`, `REALTIME_MINI_MODEL` | 통화 모델 (`gpt-realtime`, `gpt-realtime-mini`) |
-| `CHAT_MODEL` | 평가/힌트/번역/주제 생성 모델 (`gpt-5-mini`) |
-| `TRANSCRIBE_MODEL`, `TTS_MODEL`, `DEFAULT_VOICE` | 사용자 음성 인식, 표현 듣기 TTS, 기본 목소리 |
-| `GEMINI_LIVE_MODEL` | Gemini Live 모델 (키로 접근 불가하면 최신 `native-audio` 모델 자동 선택) |
-| `GEMINI_CHAT_MODEL`, `GEMINI_FAST_MODEL`, `GEMINI_TTS_MODEL`, `GEMINI_DEFAULT_VOICE` | Gemini 평가 / 힌트·번역 / TTS 모델, 기본 목소리 |
-| `GEMINI_ALLOW_DIRECT_KEY` | 임시 토큰 발급 실패 시 키를 브라우저에 직접 넘기는 폴백 허용 (기본 false) |
+### 2) Setup Python Environment
 
-## 구조
+```bash
+git clone https://github.com/yojun313/eng2mouth.git
+cd eng2mouth
+
+uv sync
+source .venv/bin/activate
+```
+
+### 3) Configuration
+
+Create a `.env` file in the root directory. There exists `.env.example` in root directory.
+
+| Key | Description |
+|---|---|
+| `PORT` | HTTP port (default `7005`) |
+| `MONGO_HOST`, `MONGO_PORT`, `MONGO_DB`, `MONGO_USERNAME`, `MONGO_PASSWORD` | MongoDB connection (`authSource=admin`) |
+| `SECRET_KEY` | Session secret |
+| `MAIL_SENDER`, `MAIL_PASSWORD` | Gmail SMTP for sign-up verification codes. If empty, sign-up works without email verification |
+| `SIGNUP_REQUIRE_EMAIL` | `true` to require email verification when mail is configured |
+| `REALTIME_MODEL`, `REALTIME_MINI_MODEL` | OpenAI voice models (default `gpt-realtime-2.1`, `gpt-realtime-2.1-mini`) |
+| `CHAT_MODEL` | OpenAI model for evaluation / hints / translation / topic generation (default `gpt-5.6-luna`) |
+| `TRANSCRIBE_MODEL`, `TTS_MODEL`, `DEFAULT_VOICE` | OpenAI input transcription, phrase TTS, default voice |
+| `GEMINI_LIVE_MODEL` | Gemini Live model (default `gemini-3.8-live`). If the key cannot access it, the newest available `live` / `native-audio` model is picked automatically |
+| `GEMINI_CHAT_MODEL`, `GEMINI_FAST_MODEL`, `GEMINI_TTS_MODEL`, `GEMINI_DEFAULT_VOICE` | Gemini evaluation / fast tasks / TTS models and default voice |
+| `GEMINI_ALLOW_DIRECT_KEY` | Fallback that passes the raw key to the browser when ephemeral tokens cannot be minted (default `false`) |
+| `USD_KRW` | Fallback exchange rate used when the daily rate lookup fails (default `1400`) |
+
+Model names are only defaults. When a configured model is unavailable for a user's key (for example, retired for new users), the server falls back to the newest model the key can access and remembers the rejected one for the process lifetime.
+
+### 4) Run the Server
+
+```bash
+python3 run.py
+```
+
+The app is served on `http://0.0.0.0:7005`. For phones, put it behind an HTTPS reverse proxy (nginx / Caddy) and add it to the home screen for a full-screen, app-like call UI.
+
+---
+
+## 4. How a Call Works
+
+1. `POST /api/calls/start`: the server builds the persona / level / topic / correction-style instructions and mints a short-lived token with the user's key: an OpenAI Realtime client secret (10 min) or a Gemini `v1alpha` ephemeral auth token (single use). The selected options are stored as the user's defaults.
+2. The browser connects **directly** to the provider: OpenAI via WebRTC (`/v1/realtime/calls`), Gemini via WebSocket (`BidiGenerateContentConstrained`, PCM16 16 kHz up / 24 kHz down). Gemini playback is routed through a local WebRTC loopback so the browser's echo canceller works on speakerphone. The real API key never reaches the client.
+3. Captions, usage metadata and the `end_call` tool arrive over the data channel / socket and drive the same call UI for both providers.
+4. On hang-up, `POST /api/calls/{id}/finish` stores the transcript, duration, token usage and estimated cost; `POST /api/calls/{id}/evaluate` produces the structured report (JSON schema enforced) and adds its cost to the call.
+
+---
+
+## 5. Project Structure
+
 ```
 app/
-  main.py            FastAPI 앱
-  core/config.py     설정 · 목소리/레벨/모델 목록
-  db/                MongoDB (users, sessions, calls, phrases, daily_picks)
-  routes/            view / auth / user / call / topic / assist / phrase / stats
-  services/          auth_manager, personas, topics, prompts, openai_service, gemini_service, llm(제공자 분기), call_service, pricing
-  templates/         base(공통 레이아웃) + dashboard, call, history, call_detail, topics, phrases, settings, login, signup
-static/shared/       app.css, theme.css, theme.js  · manifest, sw.js, icons
+  main.py                FastAPI app, static files, PWA manifest / service worker
+  core/config.py         Settings, voices, levels, model lists
+  db/                    MongoDB collections (users, sessions, calls, phrases, daily_picks)
+  routes/
+    view_routes.py       Pages (landing, dashboard, call, topics, history, phrases, settings)
+    auth_routes.py       Sign-up (email code), login, logout
+    user_routes.py       Settings, API-key verification, model list, profile, export, delete
+    call_routes.py       Start / finish / evaluate / list / detail / bookmark / note
+    topic_routes.py      Daily topics, personal recommendations, personas
+    assist_routes.py     Hints, translation, TTS
+    phrase_routes.py     Phrasebook CRUD
+    stats_routes.py      Dashboard statistics
+  services/
+    prompts.py           Persona-as-a-real-person instructions, evaluation prompt & schema
+    personas.py          Persona catalogue
+    topics.py            Topic bank, roleplay scenarios, daily rotation
+    openai_service.py    Realtime client secrets, chat JSON, TTS, model fallback
+    gemini_service.py    Live ephemeral tokens, generateContent JSON, TTS, model fallback
+    llm.py               Provider dispatcher for text tasks and TTS
+    call_service.py      Stats, evaluation orchestration, dashboard aggregation
+    pricing.py           Cost estimation (USD) and KRW conversion
+  templates/             Jinja2 pages (base layout + pages)
+static/
+  shared/                app.css, theme.css, theme.js (shared theme system)
+  icons/, manifest.webmanifest, sw.js
 ```
 
-## 통화 동작 원리
-1. `POST /api/calls/start` — 서버가 사용자 키로 **임시 토큰**을 발급 (OpenAI: Realtime client secret 10분 / Gemini: v1alpha auth_tokens 1회용). 페르소나·레벨·주제·교정 방식으로 instructions 구성. 이때 고른 제공자/모델/목소리는 사용자 기본값으로 저장.
-2. 브라우저가 OpenAI(WebRTC) 또는 Gemini(WebSocket, PCM16 16kHz↑/24kHz↓)에 직접 연결 (실제 키는 브라우저에 가지 않음). 자막·사용량·`end_call` 툴 이벤트를 받아 동일한 통화 UI로 처리.
-3. 종료 시 `POST /api/calls/{id}/finish` (트랜스크립트·사용량 저장) → `POST /api/calls/{id}/evaluate` (JSON 스키마 강제 평가).
+---
+
+## 6. Cost Reference (estimates, per 10-minute call)
+
+| Provider / model | Estimated cost |
+|---|---|
+| Google Gemini Live | $0.12 – $0.32 (free within the AI Studio free tier) |
+| OpenAI `gpt-realtime-2.1-mini` | $0.12 – $0.16 |
+| OpenAI `gpt-realtime-2.1` | $0.32 – $0.45 |
+| Evaluation report | about $0.003 (Gemini Flash) to $0.01 (GPT) |
+
+Estimates are based on public list prices; the app shows the actual token usage of each call converted to USD and KRW, but the provider's billing dashboard is the source of truth.
