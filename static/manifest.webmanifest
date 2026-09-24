@@ -2,17 +2,18 @@
   "name": "Eng2Mouth — AI 전화영어",
   "short_name": "Eng2Mouth",
   "description": "AI 원어민과 전화하듯 영어 회화를 연습하고 말하기 평가를 받아보세요.",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#05070f",
   "theme_color": "#05070f",
   "lang": "ko",
   "icons": [
     { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/static/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
     { "name": "전화 걸기", "url": "/call", "description": "바로 통화 시작" },

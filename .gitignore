@@ -220,3 +220,6 @@ __marimo__/
 # eng2mouth
 profiles/
 data/
+
+# tailwind standalone CLI (scripts/build_css.sh 가 내려받음)
+.tools/

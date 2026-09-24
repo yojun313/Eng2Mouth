@@ -1,12 +1,14 @@
 import os
-import shutil
+import secrets
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from pydantic import BaseModel
 
 from app.core.config import settings
-from app.db import calls_col, phrases_col, daily_picks_col, sessions_col, users_col
+from app.core.security import MAX_UPLOAD, get_session_id
+from app.services import totp
+from app.db import calls_col, daily_picks_col, phrases_col, sessions_col, users_col
 from app.routes.deps import get_current_user
 from app.services import gemini_service, openai_service, pricing
 from app.services.auth_manager import AuthManager
@@ -202,28 +204,113 @@ async def change_password(req: PasswordChange, user: str = Depends(get_current_u
     return {"status": "ok"}
 
 
+IMAGE_MAGIC = {
+    b"\x89PNG\r\n\x1a\n": ".png",
+    b"\xff\xd8\xff": ".jpg",
+    b"GIF87a": ".gif",
+    b"GIF89a": ".gif",
+}
+
+
+def _sniff_image(head: bytes) -> str | None:
+    for magic, ext in IMAGE_MAGIC.items():
+        if head.startswith(magic):
+            return ext
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return ".webp"
+    return None
+
+
 @router.post("/user/profile-image")
-async def upload_profile_image(
-    file: UploadFile = File(...), user: Any = Depends(get_current_user)
-):
-    ext = os.path.splitext(file.filename or "")[1].lower()
-    if ext not in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
-        raise HTTPException(
-            status_code=400, detail="이미지 파일(JPG/PNG/WEBP)만 업로드할 수 있습니다."
-        )
+async def upload_profile_image(request: Request, user: str = Depends(get_current_user)):
+    """프로필 이미지: 로그인 확인 후에만 본문을 읽고, 스트리밍하며 크기를 검사한다. 파일명은 서버가 정한다."""
+    try:
+        declared = int(request.headers.get("content-length") or 0)
+    except ValueError:
+        declared = 0
+    if declared > MAX_UPLOAD:
+        raise HTTPException(status_code=413, detail="이미지는 5MB 이하만 올릴 수 있습니다.")
     os.makedirs(settings.PROFILE_DIR, exist_ok=True)
-    for old in os.listdir(settings.PROFILE_DIR):
-        if old.startswith(user + "."):
-            try:
-                os.remove(os.path.join(settings.PROFILE_DIR, old))
-            except OSError:
-                pass
-    path = os.path.join(settings.PROFILE_DIR, f"{user}{ext}")
-    with open(path, "wb") as out:
-        shutil.copyfileobj(file.file, out)
-    url = f"/static/profiles/{user}{ext}?v={int(os.path.getmtime(path))}"
+    tmp_name = f".{user}-{secrets.token_hex(6)}.part"
+    tmp_path = os.path.join(settings.PROFILE_DIR, tmp_name)
+    size, head, ext = 0, b"", None
+    fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as out:
+            async for chunk in request.stream():
+                if not chunk:
+                    continue
+                if len(head) < 16:
+                    head += chunk[: 16 - len(head)]
+                    if len(head) >= 12 and ext is None:
+                        ext = _sniff_image(head)
+                        if not ext:
+                            raise HTTPException(status_code=400, detail="이미지 파일(JPG/PNG/WEBP/GIF)만 업로드할 수 있습니다.")
+                size += len(chunk)
+                if size > MAX_UPLOAD:
+                    raise HTTPException(status_code=413, detail="이미지는 5MB 이하만 올릴 수 있습니다.")
+                out.write(chunk)
+        if not ext or size == 0:
+            raise HTTPException(status_code=400, detail="이미지를 읽을 수 없습니다.")
+        for old in os.listdir(settings.PROFILE_DIR):
+            if old.startswith(user + ".") or (old.startswith("." + user + "-") and old != tmp_name):
+                try:
+                    os.remove(os.path.join(settings.PROFILE_DIR, old))
+                except OSError:
+                    pass
+        final = os.path.join(settings.PROFILE_DIR, f"{user}{ext}")
+        os.replace(tmp_path, final)
+    except Exception:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        raise
+    url = f"/static/profiles/{user}{ext}?v={int(os.path.getmtime(final))}"
     users_col.update_one({"username": user}, {"$set": {"profile_img": url}})
     return {"status": "ok", "url": url}
+
+
+# ---- 2단계 인증 ----
+class TotpCode(BaseModel):
+    code: str
+
+
+class PasswordOnly(BaseModel):
+    password: str
+
+
+@router.get("/security/status")
+async def security_status(request: Request, user: str = Depends(get_current_user)):
+    return {**AuthManager.totp_status(user), "sessions": AuthManager.list_sessions(user, get_session_id(request))}
+
+
+@router.post("/security/totp/begin")
+async def totp_begin(req: PasswordOnly, user: str = Depends(get_current_user)):
+    if not AuthManager.check_password(user, req.password):
+        raise HTTPException(status_code=400, detail="비밀번호가 올바르지 않습니다.")
+    secret = totp.new_secret()
+    AuthManager.totp_begin(user, secret)
+    return {"secret": secret, "uri": totp.otpauth_uri(secret, user)}
+
+
+@router.post("/security/totp/enable")
+async def totp_enable(req: TotpCode, user: str = Depends(get_current_user)):
+    u = users_col.find_one({"username": user}, {"totp_pending_secret": 1})
+    if not u or not u.get("totp_pending_secret"):
+        raise HTTPException(status_code=400, detail="먼저 등록을 시작해 주세요.")
+    if totp.verify(u["totp_pending_secret"], req.code) is None:
+        raise HTTPException(status_code=400, detail="인증 코드가 올바르지 않습니다. 앱의 시간이 맞는지 확인해 주세요.")
+    AuthManager.totp_enable(user)
+    return {"status": "ok"}
+
+
+@router.post("/security/totp/disable")
+async def totp_disable(req: PasswordOnly, user: str = Depends(get_current_user)):
+    if not AuthManager.check_password(user, req.password):
+        raise HTTPException(status_code=400, detail="비밀번호가 올바르지 않습니다.")
+    AuthManager.totp_disable(user)
+    return {"status": "ok"}
 
 
 @router.get("/user/export")

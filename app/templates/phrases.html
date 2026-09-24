@@ -1,84 +1,22 @@
 {% extends "base.html" %}
 {% block title %}Phrases - Eng2Mouth{% endblock %}
 {% block header %}<i class="fas fa-bookmark mr-2 text-blue-400"></i>표현 노트{% endblock %}
-{% block header_actions %}<button id="quizBtn" class="btn-ghost px-3 py-1.5 rounded-lg text-xs font-bold"><i class="fas fa-graduation-cap mr-1 text-purple-300"></i>복습 퀴즈</button>{% endblock %}
+{% block header_actions %}<button id="quizBtn" class="btn-ghost px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap"><i class="fas fa-graduation-cap mr-1 text-purple-300"></i>복습 퀴즈</button>{% endblock %}
 {% block content %}
-<div class="flex-1 overflow-y-auto p-4 md:p-6 page-scroll">
+<div class="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 safe-bottom">
     <div class="max-w-4xl mx-auto space-y-4">
         <div class="glass rounded-2xl p-3 md:p-4 flex flex-col md:flex-row gap-3 md:items-center">
-            <div class="relative flex-1"><i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 text-sm"></i><input id="q" type="search" class="w-full glass-input rounded-xl pl-10 pr-4 py-2.5 text-base md:text-sm placeholder-white/30" placeholder="표현 / 뜻 검색"></div>
-            <div class="seg" id="seg"><button data-v="" class="active">전체</button><button data-v="0">복습 필요</button><button data-v="1">익힘</button></div>
+            <div class="relative flex-1 min-w-0"><i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 text-sm"></i><input id="q" type="search" class="w-full glass-input rounded-xl pl-10 pr-4 py-2.5 text-base md:text-sm placeholder-white/30" placeholder="표현 / 뜻 검색"></div>
+            <div class="seg" id="seg"><button data-v="" class="active">전체</button><button data-v="0">복습 필요 <span id="cntDue" class="opacity-60"></span></button><button data-v="1">익힘</button></div>
         </div>
-        <form id="addForm" class="glass rounded-2xl p-3 md:p-4 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2">
-            <input id="addPhrase" class="glass-input rounded-xl px-3 py-2.5 text-base md:text-sm" placeholder="직접 추가: 영어 표현" required>
-            <input id="addMeaning" class="glass-input rounded-xl px-3 py-2.5 text-base md:text-sm" placeholder="뜻 (한국어)">
+        <form id="addForm" class="glass rounded-2xl p-3 md:p-4 grid grid-cols-[minmax(0,1fr)] md:grid-cols-[1fr_1fr_auto] gap-2">
+            <input id="addPhrase" class="glass-input rounded-xl px-3 py-2.5 text-base md:text-sm min-w-0" placeholder="직접 추가: 영어 표현" required>
+            <input id="addMeaning" class="glass-input rounded-xl px-3 py-2.5 text-base md:text-sm min-w-0" placeholder="뜻 (한국어)">
             <button class="btn-glow px-4 py-2.5 rounded-xl text-sm font-bold"><i class="fas fa-plus mr-1"></i>추가</button>
         </form>
         <p class="text-xs text-white/40 px-1" id="countLine"></p>
-        <div id="list" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
-    </div>
-</div>
-
-<div id="quizModal" class="e2m-modal-backdrop" hidden>
-    <div class="e2m-modal glass-strong p-5">
-        <div class="flex items-center justify-between mb-4"><h3 class="font-bold"><i class="fas fa-graduation-cap text-purple-300 mr-2"></i>복습 퀴즈</h3><button id="quizClose" class="text-white/50 text-2xl leading-none">&times;</button></div>
-        <div id="quizBody"></div>
+        <div id="list" class="grid grid-cols-[minmax(0,1fr)] md:grid-cols-2 gap-3"></div>
     </div>
 </div>
 {% endblock %}
-{% block scripts %}
-<script>
-    let items = [], filter = '', q = '';
-    async function load() { const d = await api(`/api/phrases?learned=${filter}&q=${encodeURIComponent(q)}`); items = d.items; render(d.total); }
-    function render(total) {
-        document.getElementById('countLine').textContent = `${items.length}개 표시 · 전체 ${total ?? items.length}개`;
-        document.getElementById('list').innerHTML = items.map((p) => `
-            <div class="glass rounded-2xl p-4 ${p.learned ? 'opacity-70' : ''}" data-id="${p.id}">
-                <div class="flex items-start justify-between gap-2">
-                    <div class="min-w-0"><p class="font-bold text-[15px] leading-snug">${esc(p.phrase)}</p>${p.meaning_ko ? `<p class="text-xs text-white/60 mt-0.5">${esc(p.meaning_ko)}</p>` : ''}${p.example ? `<p class="text-[12px] text-white/45 italic mt-1">“${esc(p.example)}”</p>` : ''}</div>
-                    <span class="chip flex-shrink-0 ${p.kind === 'correction' ? 'text-red-200 border-red-400/30 bg-red-500/10' : 'text-blue-200 border-blue-400/30 bg-blue-500/10'}">${p.kind === 'correction' ? '교정' : '표현'}</span>
-                </div>
-                <div class="flex items-center gap-3 mt-3 text-[11px]">
-                    <button class="speak text-white/50 hover:text-white" data-text="${esc(p.phrase)}"><i class="fas fa-volume-high mr-1"></i>듣기</button>
-                    <button class="learn ${p.learned ? 'text-emerald-300' : 'text-white/50 hover:text-white'}" data-id="${p.id}" data-learned="${p.learned}"><i class="fas ${p.learned ? 'fa-circle-check' : 'fa-circle'} mr-1"></i>${p.learned ? '익힘' : '익혔어요'}</button>
-                    ${p.source_call_id ? `<a href="/history/${p.source_call_id}" class="text-white/40 hover:text-white"><i class="fas fa-phone mr-1"></i>통화 보기</a>` : ''}
-                    <button class="del ml-auto text-white/30 hover:text-red-300" data-id="${p.id}"><i class="fas fa-trash"></i></button>
-                </div>
-            </div>`).join('') || '<div class="col-span-full text-center text-white/35 text-sm py-16"><i class="far fa-bookmark text-4xl mb-3 opacity-40 block"></i>저장된 표현이 없습니다.<br>통화 리포트에서 "표현 노트에 저장"을 눌러보세요.</div>';
-        document.querySelectorAll('.speak').forEach((b) => b.addEventListener('click', () => speak(b)));
-        document.querySelectorAll('.learn').forEach((b) => b.addEventListener('click', async () => { const v = b.dataset.learned !== 'true'; await api(`/api/phrases/${b.dataset.id}`, { method: 'PATCH', body: { learned: v } }); load(); }));
-        document.querySelectorAll('.del').forEach((b) => b.addEventListener('click', async () => { if (!confirm('삭제할까요?')) return; await api(`/api/phrases/${b.dataset.id}`, { method: 'DELETE' }); load(); }));
-    }
-    async function speak(b) { const orig = b.innerHTML; b.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; try { const res = await fetch('/api/assist/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: b.dataset.text }) }); if (!res.ok) throw new Error((await res.json()).detail); new Audio(URL.createObjectURL(await res.blob())).play(); } catch (e) { toast(e.message || '재생 실패', false); } finally { b.innerHTML = orig; } }
-    document.getElementById('q').addEventListener('input', (e) => { q = e.target.value.trim(); load(); });
-    document.querySelectorAll('#seg button').forEach((b) => b.addEventListener('click', () => { filter = b.dataset.v; document.querySelectorAll('#seg button').forEach((x) => x.classList.toggle('active', x === b)); load(); }));
-    document.getElementById('addForm').addEventListener('submit', async (e) => { e.preventDefault(); try { await api('/api/phrases', { method: 'POST', body: { phrase: document.getElementById('addPhrase').value, meaning_ko: document.getElementById('addMeaning').value } }); document.getElementById('addPhrase').value = ''; document.getElementById('addMeaning').value = ''; toast('추가했어요'); load(); } catch (err) { toast(err.message, false); } });
-
-    // ---- 복습 퀴즈: 뜻을 보고 영어 표현 떠올리기 (플래시카드) ----
-    let quiz = [], qi = 0;
-    document.getElementById('quizBtn').addEventListener('click', async () => {
-        const d = await api('/api/phrases?learned=0'); quiz = d.items.filter((p) => p.meaning_ko).sort(() => Math.random() - .5).slice(0, 10); qi = 0;
-        if (!quiz.length) { toast('복습할 표현(뜻이 있는)이 없어요', false); return; }
-        document.getElementById('quizModal').hidden = false; showCard();
-    });
-    document.getElementById('quizClose').addEventListener('click', () => { document.getElementById('quizModal').hidden = true; load(); });
-    function showCard() {
-        const body = document.getElementById('quizBody');
-        if (qi >= quiz.length) { body.innerHTML = `<div class="text-center py-6"><i class="fas fa-trophy text-4xl text-amber-300 mb-3"></i><p class="font-bold">오늘 복습 완료!</p><p class="text-xs text-white/50 mt-1">${quiz.length}개를 돌아봤어요.</p><button onclick="document.getElementById('quizClose').click()" class="btn-glow px-5 py-2.5 rounded-xl text-sm font-bold mt-4">닫기</button></div>`; return; }
-        const p = quiz[qi];
-        body.innerHTML = `<p class="text-[11px] text-white/40 mb-2">${qi + 1} / ${quiz.length}</p>
-            <div class="glass rounded-2xl p-6 text-center min-h-[150px] flex flex-col items-center justify-center">
-                <p class="text-xs text-white/50 mb-2">이 뜻을 영어로 말해보세요</p><p class="text-lg font-bold">${esc(p.meaning_ko)}</p>
-                <div id="answer" class="hidden mt-4 border-t border-white/10 pt-4 w-full"><p class="text-xl font-extrabold text-emerald-200">${esc(p.phrase)}</p>${p.example ? `<p class="text-xs text-white/50 italic mt-1">“${esc(p.example)}”</p>` : ''}<button class="speak text-xs text-white/50 hover:text-white mt-2" data-text="${esc(p.phrase)}"><i class="fas fa-volume-high mr-1"></i>듣기</button></div>
-            </div>
-            <div class="grid grid-cols-2 gap-2 mt-4" id="quizActions"><button id="revealBtn" class="btn-glow py-3 rounded-xl text-sm font-bold col-span-2">정답 보기</button></div>`;
-        body.querySelector('#revealBtn').addEventListener('click', () => {
-            body.querySelector('#answer').classList.remove('hidden'); body.querySelector('.speak').addEventListener('click', (e) => speak(e.currentTarget));
-            body.querySelector('#quizActions').innerHTML = `<button id="againQ" class="btn-ghost py-3 rounded-xl text-sm font-bold"><i class="fas fa-rotate mr-1"></i>다시 볼래요</button><button id="gotQ" class="btn-call py-3 rounded-xl text-sm font-bold"><i class="fas fa-check mr-1"></i>익혔어요</button>`;
-            body.querySelector('#againQ').addEventListener('click', () => { qi++; showCard(); });
-            body.querySelector('#gotQ').addEventListener('click', async () => { await api(`/api/phrases/${p.id}`, { method: 'PATCH', body: { learned: true } }); qi++; showCard(); });
-        });
-    }
-    load().catch((e) => toast(e.message, false));
-</script>
-{% endblock %}
+{% block scripts %}<script src="/static/js/phrases.js"></script>{% endblock %}

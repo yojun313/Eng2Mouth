@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="0.55" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#a21caf"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.25" cy="0.15" r="0.9">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="0.6" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- 꽉 찬 정사각형 · 투명 없음: iOS 가 모서리를 직접 둥글게 자른다 -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+  <!-- 말풍선 (가운데 80% 안) -->
+  <path d="M262 236 H762 A96 96 0 0 1 858 332 V612 A96 96 0 0 1 762 708 H430 L300 812 V708 H262 A96 96 0 0 1 166 612 V332 A96 96 0 0 1 262 236 Z" fill="#ffffff" fill-opacity="0.96"/>
+  <!-- 음파 -->
+  <circle cx="392" cy="472" r="34" fill="#6d28d9"/>
+  <path d="M470 400 A100 100 0 0 1 470 544" fill="none" stroke="#6d28d9" stroke-width="40" stroke-linecap="round"/>
+  <path d="M540 340 A170 170 0 0 1 540 604" fill="none" stroke="#7c3aed" stroke-width="40" stroke-linecap="round"/>
+  <path d="M612 282 A240 240 0 0 1 612 662" fill="none" stroke="#a78bfa" stroke-width="40" stroke-linecap="round"/>
+</svg>

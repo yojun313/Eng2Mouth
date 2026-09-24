@@ -1,64 +1,42 @@
 {% extends "base.html" %}
 {% block title %}History - Eng2Mouth{% endblock %}
 {% block header %}<i class="fas fa-clock-rotate-left mr-2 text-blue-400"></i>통화 기록{% endblock %}
+{% block page_data %}{{ {'call_id': call_id or None} | tojson }}{% endblock %}
 {% block content %}
-<div class="flex-1 overflow-y-auto p-4 md:p-6 page-scroll">
-    <div class="max-w-5xl mx-auto space-y-4">
-        <div class="glass rounded-2xl p-3 md:p-4 flex flex-col md:flex-row gap-3 md:items-center">
-            <div class="relative flex-1">
+<div class="flex-1 min-h-0 flex">
+    <!-- 목록 (모바일: 전체 폭 / lg: 왼쪽 360px) -->
+    <section class="md-list min-h-0">
+        <div class="p-3 border-b border-white/10 space-y-2 flex-shrink-0">
+            <div class="relative">
                 <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 text-sm"></i>
-                <input id="q" type="search" class="w-full glass-input rounded-xl pl-10 pr-4 py-2.5 text-base md:text-sm placeholder-white/30" placeholder="주제, 상대 이름, 대화 내용 검색">
+                <input id="q" type="search" class="w-full glass-input rounded-xl pl-10 pr-4 py-2.5 text-base md:text-sm placeholder-white/30" placeholder="주제, 상대, 대화 내용 검색">
             </div>
             <div class="flex gap-2 overflow-x-auto no-scrollbar">
                 <div class="seg" id="kindSeg"><button data-kind="" class="active">전체</button><button data-kind="topic">주제</button><button data-kind="scenario">롤플레이</button><button data-kind="free">자유</button></div>
                 <button id="bookmarkFilter" class="btn-ghost px-3 rounded-xl text-xs font-bold whitespace-nowrap"><i class="far fa-star mr-1"></i>북마크</button>
+                <span class="chip self-center whitespace-nowrap" id="countLine"></span>
             </div>
         </div>
-        <p class="text-xs text-white/40 px-1" id="countLine"></p>
-        <div id="list" class="space-y-2"></div>
-        <div class="text-center"><button id="moreBtn" class="hidden btn-ghost px-5 py-2.5 rounded-xl text-sm font-bold">더 보기</button></div>
-    </div>
+        <div id="listScroll" class="flex-1 min-h-0 overflow-y-auto p-3 safe-bottom">
+            <div id="list" class="space-y-2"></div>
+            <div id="moreSentinel" class="h-8 flex items-center justify-center text-[11px] text-white/30"></div>
+        </div>
+    </section>
+
+    <!-- 상세 (모바일: 오른쪽에서 슬라이드 / lg: 오른쪽 고정) -->
+    <section id="detailPane" class="detail-pane min-h-0 hidden lg:flex">
+        <header class="safe-top-header lg:!pt-0 lg:!h-14 lg:!min-h-0 h-14 glass border-b border-white/10 flex items-center justify-between px-2 md:px-4 flex-shrink-0 lg:hidden">
+            <button id="backBtn" class="icon-btn border-0 bg-transparent text-white/70" aria-label="목록으로"><i class="fas fa-chevron-left text-lg"></i></button>
+            <h3 class="text-sm font-bold truncate flex-1 text-center px-2" id="paneTitle">통화 상세</h3>
+            <div class="flex items-center gap-1">
+                <button id="bookmarkBtn" class="icon-btn border-0 bg-transparent" aria-label="북마크"><i class="far fa-star"></i></button>
+                <button id="moreBtn" class="icon-btn border-0 bg-transparent" aria-label="더 보기"><i class="fas fa-ellipsis"></i></button>
+            </div>
+        </header>
+        <div id="detailBody" class="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 safe-bottom">
+            <div class="h-full flex flex-col items-center justify-center text-white/30 text-sm"><i class="fas fa-phone-volume text-4xl mb-3 opacity-40"></i>왼쪽에서 통화를 선택하세요</div>
+        </div>
+    </section>
 </div>
 {% endblock %}
-{% block scripts %}
-<script>
-    let state = { q: '', kind: '', bookmarked: false, skip: 0, total: 0 }; let debounce = null;
-    function dayKey(iso) { const d = new Date(iso); const t = new Date(); const y = new Date(); y.setDate(t.getDate() - 1); const same = (a, b) => a.toDateString() === b.toDateString(); return same(d, t) ? '오늘' : same(d, y) ? '어제' : d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' }); }
-    function card(c) {
-        const t = c.topic || {}, p = c.persona || {};
-        const kindChip = t.kind === 'scenario' ? '<span class="chip text-purple-200 border-purple-400/30 bg-purple-500/10">롤플레이</span>' : t.kind === 'free' ? '<span class="chip text-white/50">자유 대화</span>' : '';
-        return `<a href="/history/${c.id}" class="glass rounded-2xl p-3.5 flex items-center gap-3 hover:border-blue-400/40 transition group">
-            <div class="w-11 h-11 rounded-xl bg-gradient-to-br ${p.gradient || 'from-blue-500 to-purple-500'} flex items-center justify-center text-xl flex-shrink-0 shadow">${p.emoji || '📞'}</div>
-            <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2 min-w-0"><p class="font-bold text-sm truncate">${esc(t.emoji || '')} ${esc(t.title_ko || t.title || '통화')}</p>${kindChip}${c.bookmarked ? '<i class="fas fa-star text-amber-300 text-xs"></i>' : ''}</div>
-                <p class="text-[11px] text-white/45 truncate mt-0.5">${esc(p.name || '')} · ${new Date(c.started_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} · ${fmtDur(c.duration_sec)} · 내 단어 ${c.stats?.user_words ?? 0}개${c.note ? ' · 📝 ' + esc(c.note.slice(0, 30)) : ''}</p>
-            </div>
-            <div class="text-right flex-shrink-0">
-                ${c.overall != null ? `<p class="text-xl font-extrabold tabular leading-none" style="color:${scoreColor(c.overall)}">${c.overall}</p><p class="text-[10px] text-white/40">${esc(c.cefr || '')}</p>` : '<p class="text-[10px] text-white/35 px-2 py-1 rounded-lg bg-white/5">미평가</p>'}
-                <p class="text-[10px] text-amber-200/90 tabular mt-0.5 whitespace-nowrap"><i class="fas fa-coins mr-0.5 text-[8px]"></i>${fmtKrw(c.cost_krw)}</p>
-            </div>
-            <i class="fas fa-chevron-right text-white/20 group-hover:text-white/60 transition text-xs"></i>
-        </a>`;
-    }
-    async function load(reset = true) {
-        if (reset) { state.skip = 0; document.getElementById('list').innerHTML = '<p class="text-center text-white/35 text-sm py-10"><i class="fas fa-spinner fa-spin mr-2"></i>불러오는 중…</p>'; }
-        const qs = new URLSearchParams({ q: state.q, kind: state.kind, bookmarked: state.bookmarked, limit: 30, skip: state.skip });
-        const d = await api('/api/calls?' + qs);
-        state.total = d.total;
-        const list = document.getElementById('list');
-        if (reset) list.innerHTML = '';
-        if (!d.items.length && reset) { list.innerHTML = '<div class="text-center text-white/35 text-sm py-16"><i class="far fa-folder-open text-4xl mb-3 opacity-40 block"></i>통화 기록이 없습니다.<br><a href="/call" class="text-emerald-300 hover:underline mt-2 inline-block">첫 통화 걸기 →</a></div>'; }
-        let lastDay = list.dataset.lastDay || '';
-        d.items.forEach((c) => { const k = dayKey(c.started_at); if (k !== lastDay) { list.insertAdjacentHTML('beforeend', `<p class="text-[11px] font-bold text-white/40 uppercase tracking-wider pt-3 pb-1 px-1">${k}</p>`); lastDay = k; } list.insertAdjacentHTML('beforeend', card(c)); });
-        list.dataset.lastDay = lastDay;
-        state.skip += d.items.length;
-        document.getElementById('moreBtn').classList.toggle('hidden', state.skip >= state.total);
-        document.getElementById('countLine').textContent = `총 ${state.total}건`;
-    }
-    document.getElementById('q').addEventListener('input', (e) => { clearTimeout(debounce); debounce = setTimeout(() => { state.q = e.target.value.trim(); load(); }, 300); });
-    document.querySelectorAll('#kindSeg button').forEach((b) => b.addEventListener('click', () => { state.kind = b.dataset.kind; document.querySelectorAll('#kindSeg button').forEach((x) => x.classList.toggle('active', x === b)); load(); }));
-    document.getElementById('bookmarkFilter').addEventListener('click', (e) => { state.bookmarked = !state.bookmarked; e.currentTarget.classList.toggle('text-amber-300', state.bookmarked); e.currentTarget.querySelector('i').className = state.bookmarked ? 'fas fa-star mr-1' : 'far fa-star mr-1'; load(); });
-    document.getElementById('moreBtn').addEventListener('click', () => load(false));
-    load().catch((e) => toast(e.message, false));
-</script>
-{% endblock %}
+{% block scripts %}<script src="/static/js/history.js"></script>{% endblock %}

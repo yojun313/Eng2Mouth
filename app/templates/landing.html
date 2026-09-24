@@ -1,24 +1,15 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <script>(function(){try{var t=localStorage.getItem('e2m_theme_style');if(t&&t!=='default')document.documentElement.setAttribute('data-ui-theme',t);if(localStorage.getItem('theme')==='light'){document.documentElement.setAttribute('data-ui-theme-mode','light');}else{document.documentElement.classList.add('dark');}}catch(e){}})();</script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    {% include "_head.html" %}
     <title>Eng2Mouth — AI와 전화로 배우는 영어 회화</title>
     <meta name="description" content="진짜 사람과 통화하는 것처럼 AI 원어민과 영어로 전화하고, 끝나면 말하기 평가 리포트를 받아보세요. 모바일에서 바로, 내 API 키로.">
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
-    <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-    <meta name="theme-color" content="#05070f">
     <meta property="og:title" content="Eng2Mouth — AI와 전화로 배우는 영어 회화">
     <meta property="og:description" content="전화 걸듯 영어로 대화하고, 통화가 끝나면 말하기 평가를 받으세요.">
     <meta property="og:image" content="/static/icons/icon-512.png">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/shared/app.css">
     <style>
         body { background: radial-gradient(circle at 15% 10%, rgba(59,130,246,0.30), transparent 40%), radial-gradient(circle at 85% 20%, rgba(168,85,247,0.25), transparent 45%), radial-gradient(circle at 50% 100%, rgba(16,185,129,0.18), transparent 50%), #05070f; background-attachment: fixed; overflow-x: hidden; }
-        .blob { position: fixed; border-radius: 9999px; filter: blur(100px); opacity: .45; z-index: -1; animation: float 14s ease-in-out infinite; }
+        .blob { position: fixed; border-radius: 9999px; filter: blur(100px); opacity: .45; z-index: -1; animation: float 14s ease-in-out infinite; pointer-events: none; }
         @keyframes float { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(20px,-30px) scale(1.08); } }
         .hero-title { font-size: clamp(2rem, 6vw, 3.6rem); line-height: 1.12; letter-spacing: -0.02em; }
         .gradient-text { background: linear-gradient(90deg, #6ee7b7, #93c5fd, #c4b5fd); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -44,7 +35,6 @@
         html[data-ui-theme-mode="light"] .glass { background: rgba(255,255,255,.6); }
         @media (max-width: 767px) { .phone { width: 240px; height: 500px; } .pavatar { width: 90px; height: 90px; font-size: 40px; } }
     </style>
-    <link rel="stylesheet" href="/static/shared/theme.css">
 </head>
 <body class="text-white min-h-[100dvh]">
     <div class="blob w-[28rem] h-[28rem] bg-blue-600 -top-32 -left-24"></div>
@@ -52,7 +42,7 @@
     <div class="blob w-80 h-80 bg-emerald-500 bottom-0 left-1/4" style="animation-delay:-9s"></div>
 
     <!-- 상단 바 -->
-    <header class="sticky top-0 z-40 glass border-b border-white/10" style="padding-top: var(--safe-top);">
+    <header class="sticky top-0 z-40 glass border-b border-white/10 safe-top-header !h-auto !min-h-0">
         <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
             <a href="/" class="flex items-center gap-2 font-extrabold text-lg tracking-tight">
                 <span class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm shadow-lg"><i class="fas fa-phone"></i></span>
@@ -210,26 +200,17 @@
         </section>
     </main>
 
-    <footer class="border-t border-white/10 py-8 text-center text-xs text-white/40" style="padding-bottom: calc(32px + var(--safe-bottom));">
+    <footer class="border-t border-white/10 py-8 text-center text-xs text-white/40 safe-bottom">
         <p class="font-bold text-white/60 mb-1">Eng2Mouth</p>
         <p>Made by <a href="https://yojun313.github.io" target="_blank" class="hover:text-blue-300 transition font-medium"><i class="fas fa-globe"></i> Yojun Moon</a> · <a href="/login" class="hover:text-white">로그인</a> · <a href="/signup" class="hover:text-white">회원가입</a></p>
     </footer>
 
     <!-- 모바일 하단 고정 CTA -->
-    <div class="fixed left-0 right-0 bottom-0 z-40 p-3 sm:hidden bg-gradient-to-t from-[#05070f] via-[#05070f]/85 to-transparent" style="padding-bottom: calc(12px + var(--safe-bottom));">
+    <div class="fixed left-0 right-0 bottom-0 z-40 p-3 sm:hidden bg-gradient-to-t from-[#05070f] via-[#05070f]/85 to-transparent safe-bottom">
         <a href="/signup" class="btn-call w-full py-3.5 rounded-2xl font-extrabold text-base flex items-center justify-center gap-2"><i class="fas fa-phone"></i> 무료로 시작하기</a>
     </div>
 
-    <script>
-        // 스크롤 등장
-        const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.12 });
-        document.querySelectorAll('.reveal:not(.in)').forEach((el) => io.observe(el));
-        // 폰 목업 자막 순환 + 타이머
-        const caps = document.querySelectorAll('#captions span'); let ci = 0;
-        setInterval(() => { caps[ci].classList.remove('show'); ci = (ci + 1) % caps.length; caps[ci].classList.add('show'); }, 3800);
-        let t = 222; const timer = document.getElementById('demoTimer');
-        setInterval(() => { t++; timer.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; }, 1000);
-    </script>
+    <script src="/static/js/landing.js"></script>
     <script src="/static/shared/theme.js"></script>
 </body>
 </html>

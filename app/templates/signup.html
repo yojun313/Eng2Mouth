@@ -1,105 +1,38 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <script>(function(){try{var t=localStorage.getItem('e2m_theme_style');if(t&&t!=='default')document.documentElement.setAttribute('data-ui-theme',t);if(localStorage.getItem('theme')==='light'){document.documentElement.setAttribute('data-ui-theme-mode','light');}else{document.documentElement.classList.add('dark');}}catch(e){}})();</script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    {% include "_auth_head.html" %}
     <title>Sign Up - Eng2Mouth</title>
-    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
-    <meta name="theme-color" content="#05070f">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/shared/app.css">
-    <style>
-        body { background: radial-gradient(circle at 15% 20%, rgba(16,185,129,0.30), transparent 40%), radial-gradient(circle at 85% 15%, rgba(59,130,246,0.28), transparent 45%), radial-gradient(circle at 50% 100%, rgba(168,85,247,0.15), transparent 50%), #05070f; background-attachment: fixed; }
-        .blob { position: fixed; border-radius: 9999px; filter: blur(90px); opacity: 0.5; z-index: 0; animation: float 12s ease-in-out infinite; }
-        @keyframes float { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(20px, -30px) scale(1.08); } }
-        .glass { box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08); }
-        .glass-input:focus { border-color: rgba(52,211,153,0.6); box-shadow: 0 0 0 3px rgba(16,185,129,0.15); }
-        .btn-green { background: linear-gradient(135deg, #10b981, #3b82f6); box-shadow: 0 8px 24px rgba(16,185,129,0.3); }
-        .btn-green:hover { transform: translateY(-1px); }
-    </style>
-    <link rel="stylesheet" href="/static/shared/theme.css">
+    <style>.glass-input:focus { border-color: rgba(52,211,153,0.6); box-shadow: 0 0 0 3px rgba(16,185,129,0.15); } .btn-green { background: linear-gradient(135deg, #10b981, #3b82f6); box-shadow: 0 8px 24px rgba(16,185,129,0.3); color: #fff; }</style>
 </head>
-<body class="text-white min-h-[100dvh] flex items-center justify-center overflow-hidden relative">
-    <button id="themeSettingsBtn" class="theme-settings-btn" type="button" title="테마 설정" aria-label="테마 설정" style="position:fixed;top:calc(16px + env(safe-area-inset-top));right:16px;z-index:100;"><i class="fas fa-palette text-sm"></i></button>
-
+<body class="text-white min-h-[100dvh] flex items-center justify-center relative safe-top safe-bottom">
+    <button id="themeSettingsBtn" class="theme-settings-btn safe-top-fixed fixed right-4 z-[100]" type="button" title="테마 설정" aria-label="테마 설정"><i class="fas fa-palette text-sm"></i></button>
     <div class="blob w-96 h-96 bg-emerald-500 -top-20 -left-20"></div>
     <div class="blob w-96 h-96 bg-blue-600 top-1/3 -right-24" style="animation-delay: -4s;"></div>
     <div class="blob w-72 h-72 bg-purple-600 bottom-0 left-1/3" style="animation-delay: -8s;"></div>
 
-    <div class="glass relative z-10 p-8 md:p-10 rounded-3xl w-full max-w-sm mx-4 my-6 max-h-[92dvh] overflow-y-auto">
-        <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-blue-600 shadow-lg shadow-emerald-900/40 mb-4">
-                <i class="fas fa-user-plus text-2xl"></i>
-            </div>
+    <div class="glass auth-card relative z-10 p-7 md:p-10 rounded-3xl w-full max-w-sm mx-4 my-3">
+        <div class="text-center mb-7">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-blue-600 shadow-lg shadow-emerald-900/40 mb-4"><i class="fas fa-user-plus text-2xl"></i></div>
             <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-300 to-blue-300">Sign Up</h1>
             <p class="text-sm text-white/50 mt-1">Eng2Mouth 계정을 새로 만드세요</p>
         </div>
-
-        <form id="signupForm" class="space-y-4">
-            <div>
-                <label class="block text-xs font-medium mb-1.5 text-white/60">Username <span class="text-white/30">(영문/숫자 3~24자)</span></label>
-                <input type="text" name="username" required autocomplete="username" autocapitalize="none" pattern="[a-zA-Z0-9_.\-]{3,24}"
-                    class="w-full px-4 py-3 rounded-xl glass-input text-base md:text-sm placeholder-white/30" placeholder="사용할 아이디">
-            </div>
-            <div>
-                <label class="block text-xs font-medium mb-1.5 text-white/60">Email{% if not require_email %} <span class="text-white/30">(선택)</span>{% endif %}</label>
-                <input type="email" name="email" id="inputEmail" {% if require_email %}required{% endif %} autocomplete="email"
-                    class="w-full px-4 py-3 rounded-xl glass-input text-base md:text-sm placeholder-white/30" placeholder="you@example.com">
-            </div>
-            <div>
-                <label class="block text-xs font-medium mb-1.5 text-white/60">Password <span class="text-white/30">(6자 이상)</span></label>
-                <input type="password" name="password" required minlength="6" autocomplete="new-password"
-                    class="w-full px-4 py-3 rounded-xl glass-input text-base md:text-sm placeholder-white/30" placeholder="••••••••">
-            </div>
-            <p id="signupError" class="hidden text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2"></p>
-            <button type="submit" id="sendBtn" class="w-full btn-green py-3 rounded-xl font-bold transition text-sm mt-2">
-                {% if require_email %}인증 메일 발송{% else %}가입하기{% endif %}
-            </button>
+        <form id="signupForm" class="space-y-4" data-require-email="{{ 'true' if require_email else 'false' }}">
+            <div><label class="block text-xs font-medium mb-1.5 text-white/60">Username <span class="text-white/30">(영문/숫자 3~24자)</span></label><input type="text" name="username" required autocomplete="username" autocapitalize="none" pattern="[a-zA-Z0-9_.\-]{3,24}" class="w-full px-4 py-3 rounded-xl glass-input text-base md:text-sm placeholder-white/30" placeholder="사용할 아이디"></div>
+            <div><label class="block text-xs font-medium mb-1.5 text-white/60">Email{% if not require_email %} <span class="text-white/30">(선택)</span>{% endif %}</label><input type="email" name="email" id="inputEmail" {% if require_email %}required{% endif %} autocomplete="email" class="w-full px-4 py-3 rounded-xl glass-input text-base md:text-sm placeholder-white/30" placeholder="you@example.com"></div>
+            <div><label class="block text-xs font-medium mb-1.5 text-white/60">Password <span class="text-white/30">(6자 이상)</span></label><input type="password" name="password" required minlength="6" autocomplete="new-password" class="w-full px-4 py-3 rounded-xl glass-input text-base md:text-sm placeholder-white/30" placeholder="••••••••"></div>
+            <p id="signupError" class="hidden text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2" role="alert"></p>
+            <button type="submit" id="sendBtn" class="w-full btn-green py-3 rounded-xl font-bold transition text-sm mt-2 min-h-[44px]">{% if require_email %}인증 메일 발송{% else %}가입하기{% endif %}</button>
         </form>
-
         <div id="verifySection" class="hidden mt-6 space-y-4 border-t border-white/10 pt-6">
-            <p class="text-xs text-amber-300/90 text-center flex items-center justify-center gap-1.5">
-                <i class="fas fa-envelope-open-text"></i> 이메일로 전송된 6자리 인증 코드를 입력하세요.
-            </p>
-            <input type="text" id="verifyCode" inputmode="numeric" placeholder="123456" maxlength="6"
-                class="w-full px-4 py-3 rounded-xl glass-input text-center tracking-[0.5em] text-xl placeholder-white/20 placeholder:tracking-normal">
-            <button id="verifyBtn" class="w-full btn-glow py-3 rounded-xl font-bold transition text-sm">확인 및 가입 완료</button>
+            <p class="text-xs text-amber-300/90 text-center flex items-center justify-center gap-1.5"><i class="fas fa-envelope-open-text"></i> 이메일로 전송된 6자리 인증 코드를 입력하세요.</p>
+            <input type="text" id="verifyCode" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" maxlength="6" class="w-full px-4 py-3 rounded-xl glass-input text-center tracking-[0.5em] text-xl placeholder-white/20 placeholder:tracking-normal">
+            <button id="verifyBtn" class="w-full btn-glow py-3 rounded-xl font-bold transition text-sm min-h-[44px]">확인 및 가입 완료</button>
         </div>
-
-        <p class="mt-6 text-center text-sm text-white/50">
-            이미 계정이 있으신가요? <a href="/login" class="text-emerald-300 hover:text-emerald-200 font-medium hover:underline">로그인</a>
-        </p>
+        <p class="mt-6 text-center text-sm text-white/50">이미 계정이 있으신가요? <a href="/login" class="text-emerald-300 hover:text-emerald-200 font-medium hover:underline">로그인</a></p>
     </div>
-
-    <script>
-        const form = document.getElementById('signupForm'), sendBtn = document.getElementById('sendBtn'), verifySection = document.getElementById('verifySection');
-        const verifyBtn = document.getElementById('verifyBtn'), err = document.getElementById('signupError');
-        const showErr = (m) => { err.textContent = m; err.classList.remove('hidden'); };
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault(); err.classList.add('hidden');
-            sendBtn.disabled = true; const orig = sendBtn.textContent; sendBtn.textContent = '처리 중...';
-            try {
-                const res = await fetch('/api/auth/signup/request', { method: 'POST', body: new FormData(form) });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) { showErr(data.detail || '가입 실패'); sendBtn.disabled = false; sendBtn.textContent = orig; return; }
-                if (data.verify) { form.classList.add('opacity-50', 'pointer-events-none'); verifySection.classList.remove('hidden'); document.getElementById('verifyCode').focus(); }
-                else { alert('가입이 완료되었습니다! 로그인해 주세요.'); window.location.href = '/login'; }
-            } catch (e2) { showErr('네트워크 오류'); sendBtn.disabled = false; sendBtn.textContent = orig; }
-        });
-        verifyBtn.addEventListener('click', async () => {
-            const code = document.getElementById('verifyCode').value.trim(), email = document.getElementById('inputEmail').value.trim();
-            verifyBtn.disabled = true; verifyBtn.textContent = '확인 중...';
-            try {
-                const res = await fetch('/api/auth/signup/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }) });
-                const data = await res.json().catch(() => ({}));
-                if (res.ok) { alert('가입이 완료되었습니다! 로그인해 주세요.'); window.location.href = '/login'; }
-                else showErr(data.detail || '인증 실패');
-            } catch (e2) { showErr('네트워크 오류'); }
-            finally { verifyBtn.disabled = false; verifyBtn.textContent = '확인 및 가입 완료'; }
-        });
-    </script>
+    <script src="/static/shared/ui.js"></script>
+    <script src="/static/js/signup.js"></script>
     <script src="/static/shared/theme.js"></script>
 </body>
 </html>

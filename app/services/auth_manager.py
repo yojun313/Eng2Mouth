@@ -1,6 +1,7 @@
 import hashlib
 import random
 import re
+import secrets
 import time
 import uuid
 from datetime import datetime, timezone
@@ -8,6 +9,7 @@ from datetime import datetime, timezone
 import bcrypt
 
 from app.core.config import settings
+from app.core.security import SESSION_IDLE_AGE, SESSION_MAX_AGE, hash_token
 from app.db import sessions_col, users_col
 from app.services.email_service import send_verification_email
 from app.services.personas import DEFAULT_PERSONA_ID, PERSONA_IDS
@@ -40,6 +42,7 @@ def default_user_fields() -> dict:
         "daily_goal_min": 10,
         "hide_api_key_notice": False,
         "total_spent_usd": 0.0,
+        "totp_enabled": False,
     }
 
 
@@ -114,46 +117,132 @@ class AuthManager:
         users_col.insert_one(doc)
 
     @staticmethod
-    def authenticate_user(username: str, password: str):
-        user = users_col.find_one({"username": username})
-        if not user:
-            return None
-        if bcrypt.checkpw(AuthManager._pre_hash(password), user["password"].encode()):
-            session_id = str(uuid.uuid4())
-            sessions_col.insert_one(
-                {
-                    "session_id": session_id,
-                    "username": username,
-                    "created_at": datetime.now(timezone.utc),
-                }
-            )
-            return session_id
-        return None
+    def _fingerprint(user: dict) -> str:
+        """비밀번호나 2FA 비밀이 바뀌면 모든 세션이 자동 무효가 되도록 하는 지문."""
+        return hashlib.sha256(f"{user.get('password','')}|{user.get('totp_secret','')}".encode()).hexdigest()[:32]
 
     @staticmethod
-    def change_password(username: str, current: str, new: str) -> str:
+    def check_password(username: str, password: str) -> dict | None:
         user = users_col.find_one({"username": username})
-        if not user or not bcrypt.checkpw(
-            AuthManager._pre_hash(current), user["password"].encode()
-        ):
-            return "wrong_password"
-        if len(new or "") < 6:
-            return "weak_password"
-        hashed = bcrypt.hashpw(AuthManager._pre_hash(new), bcrypt.gensalt()).decode()
-        users_col.update_one({"username": username}, {"$set": {"password": hashed}})
-        return "ok"
+        if not user:
+            bcrypt.checkpw(b"x", bcrypt.gensalt())  # 사용자 유무에 따른 응답 시간 차이 줄이기
+            return None
+        try:
+            ok = bcrypt.checkpw(AuthManager._pre_hash(password), user["password"].encode())
+        except ValueError:
+            ok = False
+        return user if ok else None
+
+    @staticmethod
+    def create_session(username: str, ip: str = "", user_agent: str = "") -> str:
+        user = users_col.find_one({"username": username}) or {}
+        session_id = secrets.token_urlsafe(32)
+        now = datetime.now(timezone.utc)
+        sessions_col.insert_one({
+            "session_id": hash_token(session_id), "username": username, "fp": AuthManager._fingerprint(user),
+            "created_at": now, "last_seen": now, "ip": ip[:64], "ua": (user_agent or "")[:200],
+        })
+        return session_id
+
+    @staticmethod
+    def authenticate_user(username: str, password: str):
+        user = AuthManager.check_password(username, password)
+        return AuthManager.create_session(username) if user else None
 
     @staticmethod
     def get_user_by_session(session_id):
         if not session_id:
             return None
-        s = sessions_col.find_one({"session_id": session_id})
-        return s["username"] if s else None
+        s = sessions_col.find_one({"session_id": hash_token(session_id)})
+        if not s:
+            return None
+        now = datetime.now(timezone.utc)
+        created = s.get("created_at") or now
+        last = s.get("last_seen") or created
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        if (now - created).total_seconds() > SESSION_MAX_AGE or (now - last).total_seconds() > SESSION_IDLE_AGE:
+            sessions_col.delete_one({"_id": s["_id"]})
+            return None
+        user = users_col.find_one({"username": s["username"]}, {"password": 1, "totp_secret": 1})
+        if not user or (s.get("fp") and s["fp"] != AuthManager._fingerprint(user)):
+            sessions_col.delete_one({"_id": s["_id"]})
+            return None
+        if (now - last).total_seconds() > 300:
+            sessions_col.update_one({"_id": s["_id"]}, {"$set": {"last_seen": now}})
+        return s["username"]
 
     @staticmethod
     def logout(session_id):
         if session_id:
-            sessions_col.delete_one({"session_id": session_id})
+            sessions_col.delete_one({"session_id": hash_token(session_id)})
+
+    @staticmethod
+    def logout_all(username: str, keep_session_id: str | None = None) -> int:
+        q = {"username": username}
+        if keep_session_id:
+            q["session_id"] = {"$ne": hash_token(keep_session_id)}
+        return sessions_col.delete_many(q).deleted_count
+
+    @staticmethod
+    def list_sessions(username: str, current_session_id: str | None = None) -> list[dict]:
+        cur = hash_token(current_session_id) if current_session_id else None
+        out = []
+        for s in sessions_col.find({"username": username}).sort("last_seen", -1):
+            out.append({"current": s["session_id"] == cur, "ip": s.get("ip", ""), "ua": s.get("ua", ""),
+                        "created_at": s.get("created_at").isoformat() if s.get("created_at") else None,
+                        "last_seen": s.get("last_seen").isoformat() if s.get("last_seen") else None})
+        return out
+
+    @staticmethod
+    def migrate_legacy_sessions():
+        """예전(평문 session_id, uuid 36자) 세션을 해시 저장으로 전환."""
+        n = 0
+        for s in sessions_col.find({"session_id": {"$regex": "^[0-9a-f-]{36}$"}}):
+            user = users_col.find_one({"username": s["username"]}) or {}
+            sessions_col.update_one({"_id": s["_id"]}, {"$set": {"session_id": hash_token(s["session_id"]), "fp": AuthManager._fingerprint(user),
+                                                                  "created_at": s.get("created_at") or datetime.now(timezone.utc), "last_seen": datetime.now(timezone.utc)}})
+            n += 1
+        return n
+
+    @staticmethod
+    def change_password(username: str, current: str, new: str) -> str:
+        if not AuthManager.check_password(username, current):
+            return "wrong_password"
+        if len(new or "") < 6:
+            return "weak_password"
+        hashed = bcrypt.hashpw(AuthManager._pre_hash(new), bcrypt.gensalt()).decode()
+        users_col.update_one({"username": username}, {"$set": {"password": hashed}})
+        sessions_col.delete_many({"username": username})  # 지문이 바뀌어 어차피 무효 — 명시적으로 정리
+        return "ok"
+
+    # ---- 2단계 인증 (TOTP) ----
+    @staticmethod
+    def totp_status(username: str) -> dict:
+        u = users_col.find_one({"username": username}, {"totp_enabled": 1}) or {}
+        return {"enabled": bool(u.get("totp_enabled"))}
+
+    @staticmethod
+    def totp_begin(username: str, secret: str):
+        users_col.update_one({"username": username}, {"$set": {"totp_pending_secret": secret}})
+
+    @staticmethod
+    def totp_enable(username: str) -> bool:
+        u = users_col.find_one({"username": username}, {"totp_pending_secret": 1})
+        if not u or not u.get("totp_pending_secret"):
+            return False
+        users_col.update_one({"username": username}, {"$set": {"totp_secret": u["totp_pending_secret"], "totp_enabled": True, "totp_last_step": 0}, "$unset": {"totp_pending_secret": ""}})
+        return True
+
+    @staticmethod
+    def totp_disable(username: str):
+        users_col.update_one({"username": username}, {"$set": {"totp_enabled": False}, "$unset": {"totp_secret": "", "totp_pending_secret": "", "totp_last_step": ""}})
+
+    @staticmethod
+    def totp_mark_used(username: str, step: int):
+        users_col.update_one({"username": username}, {"$set": {"totp_last_step": int(step)}})
 
     @staticmethod
     def get_user_settings(username: str) -> dict:
@@ -164,6 +253,7 @@ class AuthManager:
                 out[k] = user[k]
         out["username"] = username
         out["email"] = user.get("email", "")
+        out["totp_enabled"] = bool(user.get("totp_enabled"))
         out["profile_img"] = user.get("profile_img") or "/static/default_avatar.png"
         if out["persona"] not in PERSONA_IDS and out["persona"] != "custom":
             out["persona"] = DEFAULT_PERSONA_ID

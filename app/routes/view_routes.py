@@ -29,6 +29,7 @@ def _ctx(request: Request, user: str, page: str, **extra) -> dict:
         "page": page,
         "app": settings,
         "personas": public_personas(),
+        "page_data": {},
     }
     ctx.update(extra)
     return ctx
@@ -76,7 +77,8 @@ async def history_page(request: Request):
 
 @router.get("/history/{call_id}", response_class=HTMLResponse)
 async def call_detail_page(request: Request, call_id: str):
-    return _page(request, "call_detail.html", "history", call_id=call_id)
+    # 목록+상세 한 페이지 (모바일: 슬라이드 패널, 데스크톱: 마스터-디테일). 새로고침해도 같은 통화가 열린다.
+    return _page(request, "history.html", "history", call_id=call_id)
 
 
 @router.get("/phrases", response_class=HTMLResponse)
@@ -117,11 +119,9 @@ async def signup_page(request: Request):
 
 
 @router.get("/logout")
-async def logout(request: Request):
-    AuthManager.logout(request.cookies.get("session_id"))
-    resp = RedirectResponse(url="/login", status_code=302)
-    resp.delete_cookie("session_id")
-    return resp
+async def logout_get():
+    """GET 로그아웃은 CSRF(<img src=/logout>)에 악용될 수 있어 지원하지 않는다. 사이드바 버튼이 POST /api/auth/logout 을 부른다."""
+    return RedirectResponse(url="/", status_code=302)
 
 
 @router.get("/guide/openai", response_class=HTMLResponse)

@@ -4,10 +4,29 @@ Practice English speaking by **talking on the phone with an AI partner** that so
 
 Built as a mobile-first web app (installable as a PWA), using **OpenAI Realtime** or **Google Gemini Live** with each user's own API key. No subscription, no middleman.
 
-![Landing](./static/imgs/landing.png)
-![Dashboard](./static/imgs/dashboard.png)
-![Topics](./static/imgs/topics.png)
-![History](./static/imgs/history.png)
+<p align="center">
+  <img src="./static/imgs/landing.png" alt="Landing" width="92%">
+</p>
+
+<table>
+  <tr>
+    <td align="center" width="25%"><img src="./static/imgs/mobile/1.png" alt="Home (mobile)" width="100%"><br><sub>Home</sub></td>
+    <td align="center" width="25%"><img src="./static/imgs/mobile/2.png" alt="Call history (mobile)" width="100%"><br><sub>Call history</sub></td>
+    <td align="center" width="25%"><img src="./static/imgs/mobile/3.png" alt="Dial screen (mobile)" width="100%"><br><sub>Dial: partner & topic</sub></td>
+    <td align="center" width="25%"><img src="./static/imgs/mobile/4.png" alt="In call (mobile)" width="100%"><br><sub>In call</sub></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="./static/imgs/dashboard.png" alt="Dashboard" width="100%"><br><sub>Dashboard: streak, daily goal, personas, today's topics, talk-time and score charts</sub></td>
+    <td align="center" width="50%"><img src="./static/imgs/topics.png" alt="Topics" width="100%"><br><sub>Topic explorer: 60 conversation topics and 16 roleplay scenarios</sub></td>
+  </tr>
+  <tr>
+    <td align="center" width="50%"><img src="./static/imgs/history.png" alt="Call history" width="100%"><br><sub>Call history: scores, CEFR, cost in USD/KRW, search, filters, bookmarks</sub></td>
+    <td align="center" width="50%"><img src="./static/imgs/landing.png" alt="Landing page" width="100%"><br><sub>Landing page shown before login</sub></td>
+  </tr>
+</table>
 
 ---
 
@@ -23,7 +42,9 @@ Built as a mobile-first web app (installable as a PWA), using **OpenAI Realtime*
 * **Call history**: full transcripts with per-sentence translation, search, filters, bookmarks, notes, re-dial the same topic. Costs are shown in USD and KRW (daily exchange rate).
 * **Dashboard**: streak, daily goal ring, 14-day talk time, score trend, recent calls.
 * **Accounts & settings**: email-verified sign-up, per-user OpenAI / Gemini keys (never sent to the browser), profile image, level, correction style, voices, speaking speed, model selection, usage tracking, data export, account deletion.
-* **Same theme system as LecAI**: Aurora / Gradient Mesh / Apple Glass / Minimal Flat, dark & light mode, mobile bottom tab bar, safe-area aware layout.
+* **Same theme system as LecAI**: Aurora / Gradient Mesh / Apple Glass / Minimal Flat, dark & light mode (follows the OS on first visit, no flash), mobile bottom tab bar, safe-area aware layout.
+* **Native-feeling mobile web app**: fixed app shell with content-only scrolling, iOS keyboard handling via `visualViewport`, no pinch/double-tap zoom, 16px inputs, bottom sheets instead of `alert/confirm/prompt`, list → detail slide panel that closes with the back gesture, long-press menus, top toasts with actions, drafts kept per input, IME-safe Enter handling.
+* **Security by default**: self-hosted CSS/fonts/icons with `Content-Security-Policy: script-src 'self'` (no CDN, no inline scripts), same-origin check on every state-changing request, `SameSite=Strict` (+ `__Host-` when HTTPS) session cookies stored hashed server-side with idle/max expiry and password-change invalidation, login rate limiting (per IP and global), optional TOTP two-factor auth, POST-only logout, request body limits, streamed and sniffed profile uploads, hidden API docs and generic validation errors.
 
 ---
 
@@ -96,7 +117,27 @@ The app is served on `http://0.0.0.0:7005`. For phones, put it behind an HTTPS r
 
 ---
 
-## 5. Project Structure
+## 5. Mobile & Security Tooling
+
+The `scripts/` folder holds the tools used to verify the app without a physical phone (from the UnivDash web-app skill set):
+
+| Script | Purpose |
+|---|---|
+| `scripts/build_css.sh` | Build Tailwind into `static/vendor/tailwind.css` with the standalone CLI (no Node). **Re-run after adding new utility classes** in templates or `static/js`. |
+| `scripts/render_icons.py` | Render `static/icon.svg` (full-bleed square) into the PNG icons iOS/Android need. |
+| `scripts/mobile_audit.py` | Open every page at 390×844 with notch emulation and report horizontal overflow, sub-16px inputs and JS errors. |
+| `scripts/ios_viewport_sim.py` | Mock the iOS home-screen viewport and keyboard to check the tab bar and inputs. |
+
+```bash
+bash scripts/build_css.sh tailwind.config.js tailwind.input.css static/vendor/tailwind.css
+AUDIT_SAFE_AREA=59,34 AUDIT_LOGIN_URL=/login AUDIT_USER=me AUDIT_PASS=secret \
+  AUDIT_USER_FIELD='input[name=username]' AUDIT_PASS_FIELD='input[name=password]' \
+  uv run --with playwright python scripts/mobile_audit.py http://127.0.0.1:7005 out/ / /history /settings
+```
+
+Production checklist: put the app behind an HTTPS reverse proxy, set `SESSION_HTTPS_ONLY=true` and `ALLOWED_HOSTS=your.domain`, keep `HOST=127.0.0.1`, and enable two-factor auth in Settings → Security. After changing icons or the status-bar meta, remove and re-add the home-screen icon on iOS.
+
+## 6. Project Structure
 
 ```
 app/
@@ -121,15 +162,21 @@ app/
     llm.py               Provider dispatcher for text tasks and TTS
     call_service.py      Stats, evaluation orchestration, dashboard aggregation
     pricing.py           Cost estimation (USD) and KRW conversion
-  templates/             Jinja2 pages (base layout + pages)
+  core/security.py       CSP/security headers, CSRF origin check, body limits, login limiter, cookie helpers
+  services/totp.py       RFC 6238 TOTP (two-factor auth)
+  templates/             Jinja2 pages (_head, base app shell, pages) — no inline scripts
 static/
-  shared/                app.css, theme.css, theme.js (shared theme system)
-  icons/, manifest.webmanifest, sw.js
+  shared/                app.css, mobile.css, theme.css, theme-boot.js, viewport.js, ui.js (sheets/toasts), app.js (shell), theme.js
+  js/                    One script per page (dashboard, call, history, topics, phrases, settings, login, signup, landing)
+  vendor/                Self-hosted Tailwind build, Font Awesome, Inter / JetBrains Mono, qrcode.js
+  icons/, icon.svg, favicon.svg, manifest.webmanifest, sw.js
+scripts/                 build_css.sh, render_icons.py, mobile_audit.py, ios_viewport_sim.py
+tailwind.config.js       Tailwind content/safelist for the standalone build
 ```
 
 ---
 
-## 6. Cost Reference (estimates, per 10-minute call)
+## 7. Cost Reference (estimates, per 10-minute call)
 
 | Provider / model | Estimated cost |
 |---|---|

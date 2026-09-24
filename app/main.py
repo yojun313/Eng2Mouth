@@ -1,10 +1,12 @@
 import os
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
+from app.core.security import SecurityMiddleware
 from app.db import ensure_indexes
 from app.routes import (
     assist_routes,
@@ -18,14 +20,26 @@ from app.routes import (
 )
 
 app = FastAPI(title=settings.APP_NAME, docs_url=None, redoc_url=None, openapi_url=None)
+app.add_middleware(SecurityMiddleware)
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_error(request, exc):
+    # 스키마(필드명 · 타입)를 노출하지 않는다
+    return JSONResponse(status_code=422, content={"detail": "잘못된 요청입니다."})
 
 
 @app.on_event("startup")
 async def on_startup():
     try:
         ensure_indexes()
+        from app.services.auth_manager import AuthManager
+
+        n = AuthManager.migrate_legacy_sessions()
+        if n:
+            print(f"[INFO] migrated {n} legacy sessions to hashed ids")
     except Exception as e:  # noqa: BLE001
-        print(f"[WARN] index creation skipped: {e}")
+        print(f"[WARN] index/migration skipped: {e}")
     try:
         from app.services import pricing
 
