@@ -5,7 +5,7 @@
     <title>{% block title %}Eng2Mouth{% endblock %}</title>
     {% block head %}{% endblock %}
 </head>
-<body class="app-shell bg-dark text-white font-sans flex overflow-hidden">
+<body class="app-shell bg-dark text-white font-sans flex overflow-hidden" data-user="{{ username }}">
 
     <div id="sidebarOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden md:hidden"></div>
 
@@ -100,9 +100,9 @@
     {% include "_api_key_notice.html" %}
 
     <script type="application/json" id="page-data">{% block page_data %}{{ (page_data or {}) | tojson }}{% endblock %}</script>
-    <script src="/static/shared/ui.js"></script>
-    <script src="/static/shared/app.js"></script>
+    <script src="{{ asset('shared/ui.js') }}"></script>
+    <script src="{{ asset('shared/app.js') }}"></script>
     {% block scripts %}{% endblock %}
-    <script src="/static/shared/theme.js"></script>
+    <script src="{{ asset('shared/theme.js') }}"></script>
 </body>
 </html>

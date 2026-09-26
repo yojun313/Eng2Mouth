@@ -18,13 +18,13 @@
     transition: background 150ms, color 150ms, transform 150ms;
     flex-shrink: 0;
 }
-.theme-settings-btn:hover { background: rgba(255,255,255,0.12); color: #fff; transform: rotate(15deg); }
+@media (hover: hover) { .theme-settings-btn:hover { background: rgba(255,255,255,0.12); color: #fff; transform: rotate(15deg); } }
 html[data-ui-theme-mode="light"] .theme-settings-btn {
     border-color: rgba(15, 23, 42, 0.12);
     background: rgba(15, 23, 42, 0.05);
     color: #47536e;
 }
-html[data-ui-theme-mode="light"] .theme-settings-btn:hover { background: rgba(15,23,42,0.1); color: #101828; }
+@media (hover: hover) { html[data-ui-theme-mode="light"] .theme-settings-btn:hover { background: rgba(15,23,42,0.1); color: #101828; } }
 
 /* ── 테마 설정 모달 ─────────────────────────────────────────────── */
 .e2m-theme-overlay {
@@ -60,7 +60,7 @@ html[data-ui-theme-mode="light"] .e2m-theme-modal {
     background: none; border: none; font-size: 22px; line-height: 1;
     color: inherit; opacity: 0.5; cursor: pointer; flex-shrink: 0; padding: 0;
 }
-.e2m-theme-close:hover { opacity: 1; }
+@media (hover: hover) { .e2m-theme-close:hover { opacity: 1; } }
 .e2m-theme-body { padding: 8px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .e2m-theme-option {
     display: flex; flex-direction: column; align-items: center; gap: 8px;
@@ -75,7 +75,7 @@ html[data-ui-theme-mode="light"] .e2m-theme-option {
     border-color: rgba(15, 23, 42, 0.1);
     background: rgba(15, 23, 42, 0.03);
 }
-.e2m-theme-option:hover { border-color: rgba(96, 165, 250, 0.5); }
+@media (hover: hover) { .e2m-theme-option:hover { border-color: rgba(96, 165, 250, 0.5); } }
 .e2m-theme-option.selected { border-color: #60a5fa; background: rgba(59, 130, 246, 0.12); }
 .e2m-theme-check { display: none; margin-right: 4px; color: #60a5fa; }
 .e2m-theme-option.selected .e2m-theme-check { display: inline; }
@@ -134,7 +134,7 @@ html[data-ui-theme-mode="light"] .text-white\/50 { color: #5a6781 !important; }
 html[data-ui-theme-mode="light"] .text-white\/40 { color: #6b7490 !important; }
 html[data-ui-theme-mode="light"] .text-white\/35 { color: #77809a !important; }
 html[data-ui-theme-mode="light"] .text-white\/30 { color: #8a92aa !important; }
-html[data-ui-theme-mode="light"] .hover\:text-white:hover { color: #101828 !important; }
+@media (hover: hover) { html[data-ui-theme-mode="light"] .hover\:text-white:hover { color: #101828 !important; } }
 html[data-ui-theme-mode="light"] .placeholder-white\/30::placeholder { color: #94a3b8 !important; }
 
 /* 테두리 계열 */
@@ -146,9 +146,9 @@ html[data-ui-theme-mode="light"] .border-white\/20 { border-color: rgba(15, 23, 
 /* 배경 계열 */
 html[data-ui-theme-mode="light"] .bg-white\/5 { background-color: rgba(15, 23, 42, 0.04) !important; }
 html[data-ui-theme-mode="light"] .bg-white\/10 { background-color: rgba(15, 23, 42, 0.07) !important; }
-html[data-ui-theme-mode="light"] .hover\:bg-white\/5:hover { background-color: rgba(15, 23, 42, 0.05) !important; }
-html[data-ui-theme-mode="light"] .hover\:bg-white\/10:hover { background-color: rgba(15, 23, 42, 0.08) !important; }
-html[data-ui-theme-mode="light"] .hover\:bg-white\/20:hover { background-color: rgba(15, 23, 42, 0.12) !important; }
+@media (hover: hover) { html[data-ui-theme-mode="light"] .hover\:bg-white\/5:hover { background-color: rgba(15, 23, 42, 0.05) !important; } }
+@media (hover: hover) { html[data-ui-theme-mode="light"] .hover\:bg-white\/10:hover { background-color: rgba(15, 23, 42, 0.08) !important; } }
+@media (hover: hover) { html[data-ui-theme-mode="light"] .hover\:bg-white\/20:hover { background-color: rgba(15, 23, 42, 0.12) !important; } }
 html[data-ui-theme-mode="light"] .bg-black\/60 { background-color: rgba(15, 23, 42, 0.35) !important; }
 html[data-ui-theme-mode="light"] .bg-gray-800 { background-color: #e2e8f0 !important; }
 html[data-ui-theme-mode="light"] .bg-dark { background-color: #eef0f9 !important; }
@@ -156,16 +156,13 @@ html[data-ui-theme-mode="light"] .bg-dark { background-color: #eef0f9 !important
 /* 액센트 — 라이트 배경에서 대비가 나오도록 진하게 */
 html[data-ui-theme-mode="light"] .text-blue-300 { color: #1d4ed8 !important; }
 html[data-ui-theme-mode="light"] .text-blue-400 { color: #2563eb !important; }
-html[data-ui-theme-mode="light"] .hover\:text-blue-200:hover,
-html[data-ui-theme-mode="light"] .hover\:text-blue-300:hover,
-html[data-ui-theme-mode="light"] .hover\:text-blue-400:hover { color: #1d4ed8 !important; }
+@media (hover: hover) { html[data-ui-theme-mode="light"] .hover\:text-blue-200:hover, html[data-ui-theme-mode="light"] .hover\:text-blue-300:hover, html[data-ui-theme-mode="light"] .hover\:text-blue-400:hover { color: #1d4ed8 !important; } }
 html[data-ui-theme-mode="light"] .text-purple-400 { color: #7c3aed !important; }
-html[data-ui-theme-mode="light"] .hover\:text-purple-400:hover { color: #6d28d9 !important; }
+@media (hover: hover) { html[data-ui-theme-mode="light"] .hover\:text-purple-400:hover { color: #6d28d9 !important; } }
 html[data-ui-theme-mode="light"] .text-red-300,
 html[data-ui-theme-mode="light"] .text-red-300\/90,
 html[data-ui-theme-mode="light"] .text-red-400 { color: #dc2626 !important; }
-html[data-ui-theme-mode="light"] .hover\:text-red-300:hover,
-html[data-ui-theme-mode="light"] .hover\:text-red-400:hover { color: #b91c1c !important; }
+@media (hover: hover) { html[data-ui-theme-mode="light"] .hover\:text-red-300:hover, html[data-ui-theme-mode="light"] .hover\:text-red-400:hover { color: #b91c1c !important; } }
 html[data-ui-theme-mode="light"] .text-emerald-300 { color: #059669 !important; }
 html[data-ui-theme-mode="light"] .text-emerald-400 { color: #047857 !important; }
 html[data-ui-theme-mode="light"] .text-yellow-500 { color: #a16207 !important; }
@@ -191,7 +188,7 @@ html[data-ui-theme-mode="light"] .glass-soft {
 
 /* 스크롤바 */
 html[data-ui-theme-mode="light"] ::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.35); }
-html[data-ui-theme-mode="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(71, 85, 105, 0.55); }
+@media (hover: hover) { html[data-ui-theme-mode="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(71, 85, 105, 0.55); } }
 
 /* ============================================================================
    테마별 배경 — 각 페이지 인라인 body 배경(오로라 다크)보다 선택자 특이도가
@@ -303,3 +300,11 @@ html[data-ui-theme-mode="light"] .e2m-bottom-nav a.active { color: #1d4ed8; }
 html[data-ui-theme-mode="light"] select option { background: #fff; color: #1e2233; }
 html[data-ui-theme-mode="light"] .score-track { background: rgba(15,23,42,0.08); }
 html[data-ui-theme-mode="light"] .bar-track { background: rgba(15,23,42,0.06); }
+
+/* 라이트 모드: 다크용 연한 포인트 글자(-200)를 진하게 — 흰 배경에서 안 보이던 "미평가" · 원화 금액 등 */
+html[data-ui-theme-mode="light"] .text-amber-200,
+html[data-ui-theme-mode="light"] .text-amber-200\/90 { color: #b45309 !important; }
+html[data-ui-theme-mode="light"] .text-purple-200 { color: #7c3aed !important; }
+html[data-ui-theme-mode="light"] .text-red-200 { color: #dc2626 !important; }
+html[data-ui-theme-mode="light"] .text-pink-200 { color: #be185d !important; }
+html[data-ui-theme-mode="light"] .text-cyan-200 { color: #0e7490 !important; }

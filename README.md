@@ -43,6 +43,8 @@ Built as a mobile-first web app (installable as a PWA), using **OpenAI Realtime*
 * **Dashboard**: streak, daily goal ring, 14-day talk time, score trend, recent calls.
 * **Accounts & settings**: email-verified sign-up, per-user OpenAI / Gemini keys (never sent to the browser), profile image, level, correction style, voices, speaking speed, model selection, usage tracking, data export, account deletion.
 * **Same theme system as LecAI**: Aurora / Gradient Mesh / Apple Glass / Minimal Flat, dark & light mode (follows the OS on first visit, no flash), mobile bottom tab bar, safe-area aware layout.
+* **iPhone-like touch feel**: buttons dim and shrink the instant a finger lands and ease back over 200 ms, list rows highlight after 50 ms and cancel on scroll, no sticky hover on touch devices, iOS 18 haptics (hidden `input[switch]`) and Android vibration on selections, 44 pt+ hit areas for small buttons, and slow requests dim the button that started them.
+* **Fast by perception**: every static file is served from a versioned URL (`?v=`) with a one-year immutable cache, so moving between pages downloads nothing; the tab bar navigates on touch-down; screens seen before render instantly from a per-tab cache and refresh in the background; call details are prefetched when you press or hover a row; bookmarks and "learned" toggles update optimistically; page transitions keep the previous frame instead of flashing white.
 * **Native-feeling mobile web app**: fixed app shell with content-only scrolling, iOS keyboard handling via `visualViewport`, no pinch/double-tap zoom, 16px inputs, bottom sheets instead of `alert/confirm/prompt`, list → detail slide panel that closes with the back gesture, long-press menus, top toasts with actions, drafts kept per input, IME-safe Enter handling.
 * **Security by default**: self-hosted CSS/fonts/icons with `Content-Security-Policy: script-src 'self'` (no CDN, no inline scripts), same-origin check on every state-changing request, `SameSite=Strict` (+ `__Host-` when HTTPS) session cookies stored hashed server-side with idle/max expiry and password-change invalidation, login rate limiting (per IP and global), optional TOTP two-factor auth, POST-only logout, request body limits, streamed and sniffed profile uploads, hidden API docs and generic validation errors.
 
@@ -127,6 +129,7 @@ The `scripts/` folder holds the tools used to verify the app without a physical 
 | `scripts/render_icons.py` | Render `static/icon.svg` (full-bleed square) into the PNG icons iOS/Android need. |
 | `scripts/mobile_audit.py` | Open every page at 390×844 with notch emulation and report horizontal overflow, sub-16px inputs and JS errors. |
 | `scripts/ios_viewport_sim.py` | Mock the iOS home-screen viewport and keyboard to check the tab bar and inputs. |
+| `scripts/wrap_hover.py` | Move every top-level `:hover` rule of a CSS file into `@media (hover: hover)` so taps don't leave hover colors behind. Tailwind does the same via `future.hoverOnlyWhenSupported`. |
 
 ```bash
 bash scripts/build_css.sh tailwind.config.js tailwind.input.css static/vendor/tailwind.css
@@ -162,15 +165,16 @@ app/
     llm.py               Provider dispatcher for text tasks and TTS
     call_service.py      Stats, evaluation orchestration, dashboard aggregation
     pricing.py           Cost estimation (USD) and KRW conversion
+  core/assets.py         asset() versioned static URLs and the static cache policy
   core/security.py       CSP/security headers, CSRF origin check, body limits, login limiter, cookie helpers
   services/totp.py       RFC 6238 TOTP (two-factor auth)
   templates/             Jinja2 pages (_head, base app shell, pages) — no inline scripts
 static/
-  shared/                app.css, mobile.css, theme.css, theme-boot.js, viewport.js, ui.js (sheets/toasts), app.js (shell), theme.js
+  shared/                app.css, mobile.css, theme.css, theme-boot.js, viewport.js, press.js (touch feel · haptics · busy), ui.js (sheets · toasts · SWR cache · prefetch), app.js (shell · touch-down tabs), theme.js
   js/                    One script per page (dashboard, call, history, topics, phrases, settings, login, signup, landing)
   vendor/                Self-hosted Tailwind build, Font Awesome, Inter / JetBrains Mono, qrcode.js
   icons/, icon.svg, favicon.svg, manifest.webmanifest, sw.js
-scripts/                 build_css.sh, render_icons.py, mobile_audit.py, ios_viewport_sim.py
+scripts/                 build_css.sh, render_icons.py, mobile_audit.py, ios_viewport_sim.py, wrap_hover.py
 tailwind.config.js       Tailwind content/safelist for the standalone build
 ```
 

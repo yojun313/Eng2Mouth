@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 import bcrypt
 
+from app.core.assets import asset_url
 from app.core.config import settings
 from app.core.security import SESSION_IDLE_AGE, SESSION_MAX_AGE, hash_token
 from app.db import sessions_col, users_col
@@ -254,7 +255,7 @@ class AuthManager:
         out["username"] = username
         out["email"] = user.get("email", "")
         out["totp_enabled"] = bool(user.get("totp_enabled"))
-        out["profile_img"] = user.get("profile_img") or "/static/default_avatar.png"
+        out["profile_img"] = user.get("profile_img") or asset_url("default_avatar.png")
         if out["persona"] not in PERSONA_IDS and out["persona"] != "custom":
             out["persona"] = DEFAULT_PERSONA_ID
         if out["voice"] not in settings.VOICE_IDS:

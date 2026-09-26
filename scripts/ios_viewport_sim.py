@@ -8,6 +8,7 @@ visualViewport · innerHeight · navigator.standalone 값을 직접 흉내 낸�
 인자: URL, 포커스할 입력칸, 키보드 위에 붙어야 할 요소(입력바), 바닥에 붙어야 할 요소(탭바, 선택)
 가정: 불투명 상태바(black) → 앱 영역 390x785, 홈 인디케이터 34, 키보드 336
 """
+
 import asyncio
 import sys
 
@@ -30,11 +31,18 @@ BOTTOM = "(sel) => { const el = document.querySelector(sel); return el ? Math.ro
 async def run(url: str, focus: str, bar: str, tabbar: str | None, shrink: bool) -> bool:
     async with async_playwright() as p:
         browser = await p.chromium.launch()
-        ctx = await browser.new_context(viewport={"width": 390, "height": APP_H}, is_mobile=True, has_touch=True)
-        await ctx.add_init_script(f"window.__SHRINK__ = {'true' if shrink else 'false'};" + MOCK)
+        ctx = await browser.new_context(
+            viewport={"width": 390, "height": APP_H}, is_mobile=True, has_touch=True
+        )
+        await ctx.add_init_script(
+            f"window.__SHRINK__ = {'true' if shrink else 'false'};" + MOCK
+        )
         page = await ctx.new_page()
         cdp = await ctx.new_cdp_session(page)
-        await cdp.send("Emulation.setSafeAreaInsetsOverride", {"insets": {"top": 0, "bottom": 34, "left": 0, "right": 0}})
+        await cdp.send(
+            "Emulation.setSafeAreaInsetsOverride",
+            {"insets": {"top": 0, "bottom": 34, "left": 0, "right": 0}},
+        )
         await page.goto(url)
         await page.wait_for_timeout(1000)
         ok = True
@@ -46,7 +54,9 @@ async def run(url: str, focus: str, bar: str, tabbar: str | None, shrink: bool) 
         await page.evaluate("window.__keyboard(true)")
         await page.wait_for_timeout(800)
         bottom = await page.evaluate(BOTTOM, bar)
-        print(f"  키보드: 입력바 아래 끝 {bottom} == 키보드 위 {APP_H - KEYBOARD}: {bottom == APP_H - KEYBOARD}")
+        print(
+            f"  키보드: 입력바 아래 끝 {bottom} == 키보드 위 {APP_H - KEYBOARD}: {bottom == APP_H - KEYBOARD}"
+        )
         ok &= bottom == APP_H - KEYBOARD
         await page.evaluate("document.activeElement.blur(); window.__keyboard(false)")
         await page.wait_for_timeout(800)

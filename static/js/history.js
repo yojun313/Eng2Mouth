@@ -1,7 +1,9 @@
 // 통화 기록: 목록 + 상세 (모바일 슬라이드 패널 · 뒤로 가기 · 길게 누르기 메뉴 · 무한 스크롤) — 상세는 /history/{id} 주소를 갖는다
 (function () {
   'use strict';
-  const { api, toast, esc, fmtDur, fmtDate, fmtKrw, scoreColor, pageData, actionSheet, confirmSheet, attachLongPress } = window.AppUI;
+  const { api, swr, swrInvalidate, toast, esc, fmtDur, fmtDate, fmtKrw, scoreColor, pageData, actionSheet, confirmSheet, attachLongPress } = window.AppUI;
+  // 통화 데이터가 바뀌면 그 통화 · 대시보드 캐시를 비운다 (목록은 swr 이 알아서 새로 받는다)
+  const invalidate = (id) => { if (id) swrInvalidate(`/api/calls/${id}`); swrInvalidate('/api/stats'); swrInvalidate('/api/calls?limit=5'); };
   const lg = matchMedia('(min-width: 1024px)');
   const state = { q: '', kind: '', bookmarked: false, skip: 0, total: 0, loading: false, items: [] };
   let debounce = null, current = null, saved = new Set();
@@ -27,20 +29,28 @@
       <i class="fas fa-chevron-right text-white/20 group-hover:text-white/60 transition text-xs"></i>
     </a>`;
   }
+  function appendPage(d, reset) {
+    state.total = d.total;
+    if (reset) { listEl.innerHTML = ''; listEl.dataset.lastDay = ''; state.items = []; state.skip = 0; }
+    if (!d.items.length && reset) listEl.innerHTML = '<div class="text-center text-white/35 text-sm py-16"><i class="far fa-folder-open text-4xl mb-3 opacity-40 block"></i>통화 기록이 없습니다.<br><a href="/call" class="text-emerald-300 hover:underline mt-2 inline-block">첫 통화 걸기 →</a></div>';
+    let lastDay = listEl.dataset.lastDay || '';
+    d.items.forEach((c) => { const k = dayKey(c.started_at); if (k !== lastDay) { listEl.insertAdjacentHTML('beforeend', `<p class="text-[10px] font-bold text-white/40 uppercase tracking-wider pt-3 pb-1 px-1">${k}</p>`); lastDay = k; } listEl.insertAdjacentHTML('beforeend', card(c)); });
+    listEl.dataset.lastDay = lastDay; state.items = state.items.concat(d.items); state.skip += d.items.length;
+    document.getElementById('countLine').textContent = `총 ${state.total}건`;
+    document.getElementById('moreSentinel').textContent = state.skip < state.total ? '아래로 내리면 더 불러옵니다' : (state.total ? '끝' : '');
+  }
   async function load(reset = true) {
     if (state.loading) return; state.loading = true;
-    if (reset) { state.skip = 0; state.items = []; listEl.innerHTML = '<p class="text-center text-white/35 text-sm py-10"><i class="fas fa-spinner fa-spin mr-2"></i>불러오는 중…</p>'; listEl.dataset.lastDay = ''; }
     try {
-      const qs = new URLSearchParams({ q: state.q, kind: state.kind, bookmarked: state.bookmarked, limit: 30, skip: state.skip });
-      const d = await api('/api/calls?' + qs);
-      state.total = d.total;
-      if (reset) listEl.innerHTML = '';
-      if (!d.items.length && reset) listEl.innerHTML = '<div class="text-center text-white/35 text-sm py-16"><i class="far fa-folder-open text-4xl mb-3 opacity-40 block"></i>통화 기록이 없습니다.<br><a href="/call" class="text-emerald-300 hover:underline mt-2 inline-block">첫 통화 걸기 →</a></div>';
-      let lastDay = listEl.dataset.lastDay || '';
-      d.items.forEach((c) => { const k = dayKey(c.started_at); if (k !== lastDay) { listEl.insertAdjacentHTML('beforeend', `<p class="text-[10px] font-bold text-white/40 uppercase tracking-wider pt-3 pb-1 px-1">${k}</p>`); lastDay = k; } listEl.insertAdjacentHTML('beforeend', card(c)); });
-      listEl.dataset.lastDay = lastDay; state.items = state.items.concat(d.items); state.skip += d.items.length;
-      document.getElementById('countLine').textContent = `총 ${state.total}건`;
-      document.getElementById('moreSentinel').textContent = state.skip < state.total ? '아래로 내리면 더 불러옵니다' : (state.total ? '끝' : '');
+      if (reset) {
+        // 첫 페이지: 전에 본 목록을 즉시 → 새 데이터가 다르면 교체 (10 §4)
+        listEl.innerHTML = '<p class="text-center text-white/35 text-sm py-10"><i class="fas fa-spinner fa-spin mr-2"></i>불러오는 중…</p>';
+        const qs = new URLSearchParams({ q: state.q, kind: state.kind, bookmarked: state.bookmarked, limit: 30, skip: 0 });
+        await swr('/api/calls?' + qs, (d) => appendPage(d, true));
+      } else {
+        const qs = new URLSearchParams({ q: state.q, kind: state.kind, bookmarked: state.bookmarked, limit: 30, skip: state.skip });
+        appendPage(await api('/api/calls?' + qs), false);
+      }
     } catch (e) { toast(e.message, false); } finally { state.loading = false; }
   }
   // 무한 스크롤 (버튼 누르게 하지 않기)
@@ -75,10 +85,18 @@
 
   // ---------- 상세 렌더 ----------
   async function render(id) {
+    // 캐시(미리 받은 것 포함)가 있으면 즉시 그리고, 새 데이터가 다를 때만 다시 그린다 (10 §4 · §5)
     body.innerHTML = '<p class="text-center text-white/40 text-sm py-10"><i class="fas fa-spinner fa-spin mr-2"></i>불러오는 중…</p>';
-    let doc;
-    try { doc = await api(`/api/calls/${id}`); } catch (e) { body.innerHTML = `<p class="text-center text-red-300 text-sm py-10">${esc(e.message)}</p>`; return; }
-    if (current !== id) return;
+    let shown = false;
+    try {
+      await swr(`/api/calls/${id}`, (doc) => {
+        if (current !== id) return;                                                        // 그 사이 다른 걸 열었으면 버린다
+        if (shown && body.contains(document.activeElement) && document.activeElement.matches('textarea, input')) return;   // 메모 입력 중이면 덮지 않는다
+        paint(doc); shown = true;
+      });
+    } catch (e) { if (!shown && current === id) body.innerHTML = `<p class="text-center text-red-300 text-sm py-10">${esc(e.message)}</p>`; }
+  }
+  function paint(doc) {
     saved = new Set(doc.saved_phrases || []);
     const t = doc.topic || {}, p = doc.persona || {}, ev = doc.evaluation, st = doc.stats || {};
     document.getElementById('paneTitle').textContent = t.title_ko || t.title || '통화 상세';
@@ -108,8 +126,8 @@
             <p class="text-[10px] text-white/35 mt-1 note-status">입력하면 자동 저장됩니다.</p>
           </section>
           <section class="glass rounded-2xl overflow-hidden">
-            <div class="p-4 border-b border-white/10 flex items-center justify-between"><p class="text-[10px] font-bold text-white/50 uppercase tracking-wider"><i class="fas fa-comments mr-1 text-blue-300"></i>대화 전문 <span class="normal-case font-normal text-white/35">(${(doc.transcript || []).length}턴)</span></p><button class="only-me text-[11px] text-white/50 hover:text-white px-2 py-2"><i class="fas fa-highlighter mr-1"></i>내 말만 보기</button></div>
-            <div class="p-4 space-y-2">${(doc.transcript || []).map((x, i) => `<div class="flex ${x.role === 'user' ? 'justify-end' : ''} turn-${x.role}"><div class="max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed transcript-text ${x.role === 'user' ? 'bg-blue-500/30 rounded-br-md' : 'bg-white/10 rounded-bl-md'}"><p>${esc(x.text)}</p>${x.role === 'assistant' ? `<button class="tr-btn text-[10px] text-white/45 hover:text-white mt-1 py-1" data-i="${i}"><i class="fas fa-language mr-1"></i>번역</button><span class="tr-out block text-[11px] text-emerald-200 mt-1"></span>` : ''}</div></div>`).join('') || '<p class="text-xs text-white/40 text-center py-6">저장된 대화가 없습니다.</p>'}</div>
+            <div class="p-4 border-b border-white/10 flex items-center justify-between"><p class="text-[10px] font-bold text-white/50 uppercase tracking-wider"><i class="fas fa-comments mr-1 text-blue-300"></i>대화 전문 <span class="normal-case font-normal text-white/35">(${(doc.transcript || []).length}턴)</span></p><button class="only-me hit text-[11px] text-white/50 hover:text-white px-2 py-2"><i class="fas fa-highlighter mr-1"></i>내 말만 보기</button></div>
+            <div class="p-4 space-y-2">${(doc.transcript || []).map((x, i) => `<div class="flex ${x.role === 'user' ? 'justify-end' : ''} turn-${x.role}"><div class="max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed transcript-text ${x.role === 'user' ? 'bg-blue-500/30 rounded-br-md' : 'bg-white/10 rounded-bl-md'}"><p>${esc(x.text)}</p>${x.role === 'assistant' ? `<button class="tr-btn hit text-[10px] text-white/45 hover:text-white mt-1 py-1" data-i="${i}"><i class="fas fa-language mr-1"></i>번역</button><span class="tr-out block text-[11px] text-emerald-200 mt-1"></span>` : ''}</div></div>`).join('') || '<p class="text-xs text-white/40 text-center py-6">저장된 대화가 없습니다.</p>'}</div>
           </section>
         </div>
         <div class="2xl:col-span-7 space-y-4 min-w-0 eval-col">${ev ? evalHtml(ev) : `<div class="glass rounded-2xl p-8 text-center"><i class="fas fa-wand-magic-sparkles text-3xl text-purple-300 mb-3"></i><p class="text-sm text-white/70 mb-4">아직 평가 리포트가 없습니다.</p><button class="eval-btn btn-glow px-6 py-3 rounded-xl font-bold text-sm">지금 평가하기</button><p class="text-[10px] text-white/35 mt-2">내 API Key 로 평가 (약 $0.003~0.02)</p></div>`}</div>
@@ -144,20 +162,27 @@
     body.querySelectorAll('.save-phrase:not([disabled])').forEach((b) => b.addEventListener('click', async () => { try { const d = await api('/api/phrases', { method: 'POST', body: { phrase: b.dataset.phrase, meaning_ko: b.dataset.meaning, example: b.dataset.example, kind: b.dataset.kind, source_call_id: doc.id } }); b.innerHTML = '<i class="fas fa-bookmark mr-1"></i>저장됨'; b.className = 'save-phrase text-[11px] px-2 py-2 text-emerald-300'; b.disabled = true; toast(d.status === 'exists' ? '이미 노트에 있어요' : '표현 노트에 저장했어요', true, 3000, { label: '노트 열기', onClick: () => location.href = '/phrases' }); } catch (e) { toast(e.message, false); } }));
     body.querySelectorAll('.speak-btn').forEach((b) => b.addEventListener('click', () => speak(b)));
     body.querySelectorAll('.tr-btn').forEach((b) => b.addEventListener('click', async () => { const out = b.nextElementSibling; out.textContent = '번역 중…'; try { const d = await api('/api/assist/translate', { method: 'POST', body: { text: doc.transcript[+b.dataset.i].text } }); out.textContent = d.ko + (d.notes ? ` (${d.notes})` : ''); b.remove(); } catch (e) { out.textContent = e.message; } }));
-    body.querySelector('.eval-btn')?.addEventListener('click', async (e) => { const btn = e.currentTarget; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>평가 중… (10~30초)'; try { await api(`/api/calls/${doc.id}/evaluate`, { method: 'POST' }); toast('평가가 완료됐어요!'); render(doc.id); load(); } catch (err) { toast(err.message, false, 5000); btn.disabled = false; btn.textContent = '지금 평가하기'; } });
+    body.querySelector('.eval-btn')?.addEventListener('click', async (e) => { const btn = e.currentTarget; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>평가 중… (10~30초)'; try { await api(`/api/calls/${doc.id}/evaluate`, { method: 'POST' }); invalidate(doc.id); toast('평가가 완료됐어요!'); render(doc.id); load(); } catch (err) { toast(err.message, false, 5000); btn.disabled = false; btn.textContent = '지금 평가하기'; } });
     let noteTimer = null; const note = body.querySelector('.note-input'), noteStatus = body.querySelector('.note-status');
-    note.addEventListener('input', () => { clearTimeout(noteTimer); noteStatus.textContent = '저장 대기…'; noteTimer = setTimeout(async () => { try { await api(`/api/calls/${doc.id}`, { method: 'PATCH', body: { note: note.value } }); noteStatus.textContent = '저장됨 ' + new Date().toLocaleTimeString('ko-KR'); } catch (err) { noteStatus.textContent = '저장 실패'; } }, 800); });
+    note.addEventListener('input', () => { clearTimeout(noteTimer); noteStatus.textContent = '저장 대기…'; noteTimer = setTimeout(async () => { try { await api(`/api/calls/${doc.id}`, { method: 'PATCH', body: { note: note.value } }); invalidate(doc.id); noteStatus.textContent = '저장됨 ' + new Date().toLocaleTimeString('ko-KR'); } catch (err) { noteStatus.textContent = '저장 실패'; } }, 800); });
     let onlyMe = false; body.querySelector('.only-me').addEventListener('click', (e) => { onlyMe = !onlyMe; body.querySelectorAll('.turn-assistant').forEach((el) => el.classList.toggle('hidden', onlyMe)); e.currentTarget.innerHTML = onlyMe ? '<i class="fas fa-comments mr-1"></i>전체 보기' : '<i class="fas fa-highlighter mr-1"></i>내 말만 보기'; });
     body.querySelector('.copy-btn').addEventListener('click', async () => { const txt = (doc.transcript || []).map((x) => `${x.role === 'user' ? '나' : (doc.persona?.name || 'AI')}: ${x.text}`).join('\n'); try { await navigator.clipboard.writeText(txt); toast('대화 내용을 복사했어요'); } catch (e) { toast('복사 실패', false); } });
     body.querySelector('.bm-desk')?.addEventListener('click', () => toggleBookmark(doc));
     body.querySelector('.more-desk')?.addEventListener('click', () => menu(doc));
   }
+  function paintBookmark(on) {
+    const cls = `${on ? 'fas text-amber-300' : 'far'} fa-star`;
+    document.querySelector('#bookmarkBtn i').className = cls;
+    const d = body.querySelector('.bm-desk i'); if (d) d.className = cls;
+  }
   async function toggleBookmark(doc) {
+    // 낙관적 UI: 먼저 바꾸고, 실패하면 되돌린다 (10 §6)
     doc.bookmarked = !doc.bookmarked;
-    await api(`/api/calls/${doc.id}`, { method: 'PATCH', body: { bookmarked: doc.bookmarked } });
-    document.querySelector('#bookmarkBtn i').className = `${doc.bookmarked ? 'fas text-amber-300' : 'far'} fa-star`;
-    const d = body.querySelector('.bm-desk i'); if (d) d.className = `${doc.bookmarked ? 'fas text-amber-300' : 'far'} fa-star`;
-    toast(doc.bookmarked ? '북마크에 추가' : '북마크 해제'); load();
+    if (current === doc.id) paintBookmark(doc.bookmarked);
+    try {
+      await api(`/api/calls/${doc.id}`, { method: 'PATCH', body: { bookmarked: doc.bookmarked } });
+      invalidate(doc.id); toast(doc.bookmarked ? '북마크에 추가' : '북마크 해제'); load();
+    } catch (e) { doc.bookmarked = !doc.bookmarked; if (current === doc.id) paintBookmark(doc.bookmarked); toast(e.message, false); }
   }
   function menu(c) {
     const t = c.topic || {};
@@ -165,9 +190,9 @@
     actionSheet({ title: t.title_ko || t.title || '통화', subtitle: `${c.persona?.name || ''} · ${fmtDate(c.started_at)} · ${fmtDur(c.duration_sec)}`, actions: [
       { icon: 'fa-phone', label: '같은 주제로 다시 통화', onClick: () => location.href = redial },
       { icon: c.bookmarked ? 'fa-star-half-stroke' : 'fa-star', label: c.bookmarked ? '북마크 해제' : '북마크', onClick: () => toggleBookmark(c) },
-      ...(c.overall == null ? [{ icon: 'fa-wand-magic-sparkles', label: '지금 평가하기', sub: '내 API Key 로 리포트 생성', onClick: async () => { toast('평가 중… 10~30초 걸려요'); await api(`/api/calls/${c.id}/evaluate`, { method: 'POST' }); toast('평가 완료'); load(); if (current === c.id) render(c.id); } }] : []),
+      ...(c.overall == null ? [{ icon: 'fa-wand-magic-sparkles', label: '지금 평가하기', sub: '내 API Key 로 리포트 생성', onClick: async () => { toast('평가 중… 10~30초 걸려요'); await api(`/api/calls/${c.id}/evaluate`, { method: 'POST' }); invalidate(c.id); toast('평가 완료'); load(); if (current === c.id) render(c.id); } }] : []),
       'sep',
-      { icon: 'fa-trash', label: '기록 삭제', danger: true, onClick: async () => { if (!await confirmSheet({ title: '통화 기록 삭제', message: '이 통화의 대화와 평가가 모두 삭제됩니다. 되돌릴 수 없습니다.', confirmLabel: '삭제', danger: true })) return; await api(`/api/calls/${c.id}`, { method: 'DELETE' }); toast('삭제했어요'); if (current === c.id) close(); load(); } },
+      { icon: 'fa-trash', label: '기록 삭제', danger: true, onClick: async () => { if (!await confirmSheet({ title: '통화 기록 삭제', message: '이 통화의 대화와 평가가 모두 삭제됩니다. 되돌릴 수 없습니다.', confirmLabel: '삭제', danger: true })) return; listEl.querySelector(`[data-id="${c.id}"]`)?.remove(); await api(`/api/calls/${c.id}`, { method: 'DELETE' }); invalidate(c.id); toast('삭제했어요'); if (current === c.id) close(); load(); } },
     ] });
   }
 

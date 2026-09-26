@@ -45,7 +45,7 @@
   addEventListener('popstate', () => { if (overlay && !overlay.hidden) closeSheet(true); });
 
   function sheetHeader(title, subtitle) {
-    return `<div class="sheet-head"><div><h3>${esc(title || '')}</h3>${subtitle ? `<p>${esc(subtitle)}</p>` : ''}</div><button type="button" class="sheet-close" aria-label="닫기">&times;</button></div>`;
+    return `<div class="sheet-head"><div><h3>${esc(title || '')}</h3>${subtitle ? `<p>${esc(subtitle)}</p>` : ''}</div><button type="button" class="sheet-close hit" aria-label="닫기">&times;</button></div>`;
   }
   function bindClose(root) { root.querySelector('.sheet-close')?.addEventListener('click', () => closeSheet()); }
 
@@ -93,7 +93,7 @@
       const target = e.target.closest(selector);
       if (!target || e.button > 0 || e.target.closest('button, a.no-lp')) return;
       fired = false; start = { x: e.clientX, y: e.clientY };
-      timer = setTimeout(() => { fired = true; try { navigator.vibrate?.(12); } catch (err) {} onLongPress(target); }, 520);
+      timer = setTimeout(() => { fired = true; haptic(12); onLongPress(target); }, 520);   // 타이머 안이라 iOS 는 안 울림 (안드로이드만)
     });
     const cancel = () => { clearTimeout(timer); timer = null; };
     root.addEventListener('pointermove', (e) => { if (timer && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) cancel(); });
@@ -103,7 +103,8 @@
   }
 
   // ---------- fetch 헬퍼 ----------
-  async function api(url, opts = {}) {
+  const haptic = (p) => window.NativeFeel?.haptic(p);
+  async function request(url, opts = {}) {
     const o = { headers: {}, credentials: 'same-origin', ...opts };
     if (o.body && typeof o.body === 'object' && !(o.body instanceof FormData) && !(o.body instanceof Blob)) { o.headers['Content-Type'] = 'application/json'; o.body = JSON.stringify(o.body); }
     const res = await fetch(url, o);
@@ -113,6 +114,51 @@
     if (!res.ok) throw new Error((data && data.detail) ? (typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail)) : `오류 ${res.status}`);
     return data;
   }
+  // 방금 누른 버튼이 시작한 요청이 120ms 넘게 걸리면 그 버튼에 .is-busy (09 §7)
+  function api(url, opts = {}) {
+    const NF = window.NativeFeel;
+    const tap = NF ? NF.takeTap() : null;
+    return NF ? NF.busy(tap, request(url, opts)) : request(url, opts);
+  }
+
+  // ---------- 캐시 먼저 → 새 데이터로 교체 (stale-while-revalidate · 10 §4) ----------
+  // 사용자별 sessionStorage (탭 안에서만, 로그아웃 때 지움). 최근 40개만 유지.
+  const USER = document.body?.dataset.user || '';
+  const SWR_PREFIX = `e2m_swr:${USER}:`, SWR_INDEX = `e2m_swr_idx:${USER}`, SWR_MAX = 40;
+  const inflight = new Map();
+  function swrRead(url) { try { const v = sessionStorage.getItem(SWR_PREFIX + url); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+  function swrWrite(url, data) {
+    try {
+      let idx = JSON.parse(sessionStorage.getItem(SWR_INDEX) || '[]').filter((u) => u !== url);
+      idx.push(url);
+      while (idx.length > SWR_MAX) sessionStorage.removeItem(SWR_PREFIX + idx.shift());
+      sessionStorage.setItem(SWR_PREFIX + url, JSON.stringify(data));
+      sessionStorage.setItem(SWR_INDEX, JSON.stringify(idx));
+    } catch (e) { try { swrClear(); } catch (err) {} }   // 용량 초과 → 비우고 계속
+  }
+  function swrClear() { Object.keys(sessionStorage).filter((k) => k.startsWith('e2m_swr')).forEach((k) => sessionStorage.removeItem(k)); }
+  function swrInvalidate(prefix) { try { Object.keys(sessionStorage).filter((k) => k.startsWith(SWR_PREFIX + prefix)).forEach((k) => sessionStorage.removeItem(k)); } catch (e) {} }
+  function fetchFresh(url) {
+    if (inflight.has(url)) return inflight.get(url);
+    const req = request(url).then((d) => { swrWrite(url, d); return d; }).finally(() => inflight.delete(url));
+    req.catch(() => {});
+    inflight.set(url, req);
+    return req;
+  }
+  // onData(data, fromCache): 캐시가 있으면 즉시 한 번, 새 데이터가 다르면 한 번 더 부른다 (같으면 다시 그리지 않음 → 깜빡임 · 스크롤 튐 방지)
+  async function swr(url, onData) {
+    const NF = window.NativeFeel;
+    const tap = NF ? NF.takeTap() : null;                   // 버튼이 시작한 요청이면
+    const cached = swrRead(url);
+    if (cached) { try { onData(cached, true); } catch (e) { console.error(e); } }
+    // 캐시로 이미 바뀐 화면이면 버튼은 그대로, 캐시가 없을 때만 120ms 넘으면 .is-busy
+    const fresh = await (cached || !NF ? fetchFresh(url) : NF.busy(tap, fetchFresh(url)));
+    if (!cached || JSON.stringify(cached) !== JSON.stringify(fresh)) onData(fresh, false);
+    return fresh;
+  }
+  // 누르기 시작할 때 / 마우스를 올렸을 때 GET 을 미리 받아 둔다 (10 §5). 읽기 요청만.
+  function prefetch(url) { if (!swrRead(url) && !inflight.has(url)) fetchFresh(url); }
+
   const fmtDur = (sec) => { sec = Math.max(0, Math.round(sec || 0)); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; };
   const fmtDate = (iso) => iso ? new Date(iso).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
   const fmtKrw = (n) => `${Math.round(n || 0).toLocaleString('ko-KR')}원`;
@@ -124,6 +170,6 @@
   // 한글 조합 중 Enter 무시
   const isComposing = (e) => e.isComposing || e.keyCode === 229;
 
-  window.AppUI = { toast, actionSheet, formSheet, confirmSheet, openSheet, closeSheet, attachLongPress, api, esc, fmtDur, fmtDate, fmtKrw, scoreColor, pageData, draft, bindDraft, isComposing, coarse };
+  window.AppUI = { toast, actionSheet, formSheet, confirmSheet, openSheet, closeSheet, attachLongPress, api, swr, prefetch, swrClear, swrInvalidate, haptic, esc, fmtDur, fmtDate, fmtKrw, scoreColor, pageData, draft, bindDraft, isComposing, coarse };
   window.toast = toast; window.api = api; window.esc = esc; window.fmtDur = fmtDur; window.fmtDate = fmtDate; window.fmtKrw = fmtKrw; window.scoreColor = scoreColor;
 })();

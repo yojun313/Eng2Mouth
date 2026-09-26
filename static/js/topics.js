@@ -1,13 +1,12 @@
 (function () {
   'use strict';
-  const { api, toast, esc } = window.AppUI;
+  const { api, swr, toast, esc } = window.AppUI;
   let all = { topics: [], scenarios: [], categories: {} }, kind = 'topic', cat = '', done = new Set();
   const LEVEL_KO = { beginner: '초급', intermediate: '중급', advanced: '고급' };
   async function load() {
-    const [d, t] = await Promise.all([api('/api/topics/all'), api('/api/topics/today')]);
-    all = d; done = new Set(t.done_ids || []);
-    document.getElementById('cntTopic').textContent = all.topics.length; document.getElementById('cntScn').textContent = all.scenarios.length;
-    renderCats(); render();
+    const paint = () => { document.getElementById('cntTopic').textContent = all.topics.length; document.getElementById('cntScn').textContent = all.scenarios.length; renderCats(); render(); };
+    // 캐시 먼저 → 새 데이터가 다르면 다시 (10 §4)
+    await Promise.all([swr('/api/topics/all', (d) => { all = d; paint(); }), swr('/api/topics/today', (t) => { done = new Set(t.done_ids || []); if (all.topics.length) render(); })]);
   }
   function renderCats() {
     const row = document.getElementById('catRow');

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from app.core.assets import install as install_assets
 from app.core.config import settings
 from app.routes.deps import optional_user
 from app.services.auth_manager import AuthManager
@@ -9,6 +10,7 @@ from app.services.personas import public_personas
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+install_assets(templates)
 
 
 def _ctx(request: Request, user: str, page: str, **extra) -> dict:

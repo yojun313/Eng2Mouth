@@ -23,7 +23,6 @@
         /* 컨트롤 */
         .ctl { display: flex; flex-direction: column; align-items: center; gap: 6px; }
         .ctl button, .ctl a { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.12); color: #fff; transition: background .15s, transform .1s; backdrop-filter: blur(10px); }
-        .ctl button:active { transform: scale(.94); }
         .ctl button.on { background: rgba(255,255,255,.9); color: #0b1020; }
         .ctl span { font-size: 11px; color: rgba(255,255,255,.7); font-weight: 600; }
         html[data-ui-theme-mode="light"] .ctl button { background: rgba(15,23,42,.08); border-color: rgba(15,23,42,.1); color: #101828; }
@@ -66,7 +65,7 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
     </style>
 </head>
-<body class="app-shell text-white">
+<body class="app-shell text-white" data-user="{{ username }}">
 <div class="call-bg" id="callBg"></div>
 
 <!-- ============ 1) 통화 준비 화면 ============ -->
@@ -195,29 +194,29 @@
 <!-- 시트들 -->
 <div class="sheet-backdrop" id="sheetBackdrop"></div>
 <div class="sheet glass-strong" id="hintSheet">
-    <div class="flex items-center justify-between mb-3"><h3 class="font-bold"><i class="fas fa-lightbulb text-amber-300 mr-2"></i>이렇게 말해보세요</h3><button class="sheet-close text-white/50 text-xl">&times;</button></div>
+    <div class="flex items-center justify-between mb-3"><h3 class="font-bold"><i class="fas fa-lightbulb text-amber-300 mr-2"></i>이렇게 말해보세요</h3><button class="sheet-close hit text-white/50 text-xl">&times;</button></div>
     <div id="hintBody" class="space-y-2 text-sm"></div>
 </div>
 <div class="sheet glass-strong" id="translateSheet">
-    <div class="flex items-center justify-between mb-3"><h3 class="font-bold"><i class="fas fa-language text-blue-300 mr-2"></i>방금 한 말 번역</h3><button class="sheet-close text-white/50 text-xl">&times;</button></div>
+    <div class="flex items-center justify-between mb-3"><h3 class="font-bold"><i class="fas fa-language text-blue-300 mr-2"></i>방금 한 말 번역</h3><button class="sheet-close hit text-white/50 text-xl">&times;</button></div>
     <div id="translateBody" class="text-sm space-y-2"></div>
 </div>
 <div class="sheet glass-strong" id="keyboardSheet">
-    <div class="flex items-center justify-between mb-3"><h3 class="font-bold"><i class="fas fa-keyboard text-emerald-300 mr-2"></i>타이핑으로 말하기</h3><button class="sheet-close text-white/50 text-xl">&times;</button></div>
+    <div class="flex items-center justify-between mb-3"><h3 class="font-bold"><i class="fas fa-keyboard text-emerald-300 mr-2"></i>타이핑으로 말하기</h3><button class="sheet-close hit text-white/50 text-xl">&times;</button></div>
     <div id="quickPhrases" class="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 mb-2"></div>
     <form id="typeForm" class="flex gap-2 composer safe-bottom"><input id="typeInput" type="text" class="flex-1 min-w-0 glass-input rounded-xl px-3 py-3 text-base" placeholder="영어로 입력하면 상대가 듣습니다" autocomplete="off" enterkeyhint="send"><button class="btn-glow px-4 rounded-xl font-bold text-sm">보내기</button></form>
     <p class="text-[11px] text-white/40 mt-2">발음이 걱정될 때, 또는 조용히 해야 할 때 사용하세요. 입력한 문장도 평가에 포함됩니다.</p>
 </div>
 <div class="sheet glass-strong" id="logSheet">
-    <div class="flex items-center justify-between mb-3"><h3 class="font-bold"><i class="fas fa-list text-white/70 mr-2"></i>대화 기록</h3><button class="sheet-close text-white/50 text-xl">&times;</button></div>
+    <div class="flex items-center justify-between mb-3"><h3 class="font-bold"><i class="fas fa-list text-white/70 mr-2"></i>대화 기록</h3><button class="sheet-close hit text-white/50 text-xl">&times;</button></div>
     <div id="logBody" class="transcript-log space-y-2"></div>
 </div>
 
 
 
 <script type="application/json" id="page-data">{{ {'personas': personas, 'settings': settings, 'realtime_model': app.REALTIME_MODEL, 'realtime_models': app.REALTIME_MODELS, 'chat_models': app.CHAT_MODELS, 'chat_model': app.CHAT_MODEL, 'voices': app.VOICES, 'gemini_voices': app.GEMINI_VOICES, 'gemini_fast_model': app.GEMINI_FAST_MODEL, 'gemini_chat_model': app.GEMINI_CHAT_MODEL} | tojson }}</script>
-<script src="/static/shared/ui.js"></script>
-<script src="/static/js/call.js"></script>
-<script src="/static/shared/theme.js"></script>
+<script src="{{ asset('shared/ui.js') }}"></script>
+<script src="{{ asset('js/call.js') }}"></script>
+<script src="{{ asset('shared/theme.js') }}"></script>
 </body>
 </html>

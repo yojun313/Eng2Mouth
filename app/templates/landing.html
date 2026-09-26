@@ -29,7 +29,7 @@
         .caption-cycle span.show { display: block; animation: fadeIn .4s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
         .feature-card { transition: transform .2s, border-color .2s; }
-        .feature-card:hover { transform: translateY(-3px); border-color: rgba(96,165,250,.45); }
+        @media (hover: hover) { .feature-card:hover { transform: translateY(-3px); border-color: rgba(96,165,250,.45); } }
         .step-num { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg,#3b82f6,#8b5cf6); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; box-shadow: 0 6px 18px rgba(59,130,246,.35); color: #fff; }
         html[data-ui-theme-mode="light"] .phone-screen { color: #fff; }
         html[data-ui-theme-mode="light"] .glass { background: rgba(255,255,255,.6); }
@@ -210,7 +210,7 @@
         <a href="/signup" class="btn-call w-full py-3.5 rounded-2xl font-extrabold text-base flex items-center justify-center gap-2"><i class="fas fa-phone"></i> 무료로 시작하기</a>
     </div>
 
-    <script src="/static/js/landing.js"></script>
-    <script src="/static/shared/theme.js"></script>
+    <script src="{{ asset('js/landing.js') }}"></script>
+    <script src="{{ asset('shared/theme.js') }}"></script>
 </body>
 </html>

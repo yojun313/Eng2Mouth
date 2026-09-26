@@ -2,22 +2,24 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 {% if not public %}<meta name="robots" content="noindex, nofollow">{% endif %}
-<script src="/static/shared/theme-boot.js"></script>
+<script src="{{ asset('shared/theme-boot.js') }}"></script>
 <meta name="theme-color" content="#05070f">
-<link rel="manifest" href="/static/manifest.webmanifest">
+<link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Eng2Mouth">
 <meta name="application-name" content="Eng2Mouth">
-<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png">
-<link rel="stylesheet" href="/static/vendor/fonts.css">
-<link rel="stylesheet" href="/static/vendor/fontawesome/css/all.min.css">
-<link rel="stylesheet" href="/static/shared/app.css">
-<link rel="stylesheet" href="/static/shared/theme.css">
-<link rel="stylesheet" href="/static/shared/mobile.css">
+<link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+<link rel="icon" type="image/png" sizes="32x32" href="{{ asset('icons/favicon-32.png') }}">
+<link rel="apple-touch-icon" sizes="180x180" href="{{ asset('icons/apple-touch-icon.png') }}">
+<link rel="stylesheet" href="{{ asset('vendor/fonts.css') }}">
+<link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
+<link rel="stylesheet" href="{{ asset('shared/app.css') }}">
+<link rel="stylesheet" href="{{ asset('shared/theme.css') }}">
+<link rel="stylesheet" href="{{ asset('shared/mobile.css') }}">
 {# Tailwind 빌드 CSS 는 마지막 (Play CDN 과 같은 우선순위). safe-area 규칙은 mobile.css 에서 !important #}
-<link rel="stylesheet" href="/static/vendor/tailwind.css">
-<script src="/static/shared/viewport.js" defer></script>
+<link rel="stylesheet" href="{{ asset('vendor/tailwind.css') }}">
+<script src="{{ asset('shared/viewport.js') }}" defer></script>
+{# 누르는 느낌 · 햅틱 · 느린 버튼 (09). document 에만 리스너를 걸어 head 에서 바로 불러도 된다 #}
+<script src="{{ asset('shared/press.js') }}"></script>

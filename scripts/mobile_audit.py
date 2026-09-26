@@ -6,6 +6,7 @@
     AUDIT_LOGIN_URL=/login AUDIT_USER=me AUDIT_PASS=secret AUDIT_USER_FIELD=#username AUDIT_PASS_FIELD=#password
 노치 흉내(홈 화면 앱): AUDIT_SAFE_AREA=59,34  (top,bottom)
 """
+
 import asyncio
 import json
 import os
@@ -39,8 +40,13 @@ async def main(base: str, out: Path, paths: list[str]) -> None:
     out.mkdir(parents=True, exist_ok=True)
     async with async_playwright() as p:
         browser = await p.chromium.launch()
-        ctx = await browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=3,
-                                        is_mobile=True, has_touch=True, color_scheme="dark")
+        ctx = await browser.new_context(
+            viewport={"width": 390, "height": 844},
+            device_scale_factor=3,
+            is_mobile=True,
+            has_touch=True,
+            color_scheme="dark",
+        )
         page = await ctx.new_page()
         errors: list[str] = []
         page.on("pageerror", lambda e: errors.append(str(e)))
@@ -48,11 +54,18 @@ async def main(base: str, out: Path, paths: list[str]) -> None:
         if os.getenv("AUDIT_SAFE_AREA"):
             top, bottom = (int(v) for v in os.environ["AUDIT_SAFE_AREA"].split(","))
             cdp = await ctx.new_cdp_session(page)
-            await cdp.send("Emulation.setSafeAreaInsetsOverride", {"insets": {"top": top, "bottom": bottom, "left": 0, "right": 0}})
+            await cdp.send(
+                "Emulation.setSafeAreaInsetsOverride",
+                {"insets": {"top": top, "bottom": bottom, "left": 0, "right": 0}},
+            )
         if os.getenv("AUDIT_LOGIN_URL"):
             await page.goto(base + os.environ["AUDIT_LOGIN_URL"])
-            await page.fill(os.getenv("AUDIT_USER_FIELD", "#username"), os.environ["AUDIT_USER"])
-            await page.fill(os.getenv("AUDIT_PASS_FIELD", "#password"), os.environ["AUDIT_PASS"])
+            await page.fill(
+                os.getenv("AUDIT_USER_FIELD", "#username"), os.environ["AUDIT_USER"]
+            )
+            await page.fill(
+                os.getenv("AUDIT_PASS_FIELD", "#password"), os.environ["AUDIT_PASS"]
+            )
             await page.click("button[type=submit]")
             await page.wait_for_load_state("networkidle")
         report = {}
@@ -60,10 +73,22 @@ async def main(base: str, out: Path, paths: list[str]) -> None:
             await page.goto(base + path)
             await page.wait_for_timeout(2000)
             report[path] = await page.evaluate(AUDIT_JS)
-            await page.screenshot(path=str(out / f"mobile_{path.strip('/').replace('/', '_') or 'index'}.png"))
+            await page.screenshot(
+                path=str(
+                    out / f"mobile_{path.strip('/').replace('/', '_') or 'index'}.png"
+                )
+            )
         print(json.dumps(report, ensure_ascii=False, indent=1))
-        bad = {k: v for k, v in report.items() if v["wide"] or v["smallInputs"] or v["docWidth"] > v["vw"]}
-        print("\n문제 없음 ✓" if not bad and not errors else f"\n문제 페이지: {list(bad)}  JS 오류: {errors}")
+        bad = {
+            k: v
+            for k, v in report.items()
+            if v["wide"] or v["smallInputs"] or v["docWidth"] > v["vw"]
+        }
+        print(
+            "\n문제 없음 ✓"
+            if not bad and not errors
+            else f"\n문제 페이지: {list(bad)}  JS 오류: {errors}"
+        )
         await browser.close()
 
 

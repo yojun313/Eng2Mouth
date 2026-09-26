@@ -18,6 +18,8 @@ from urllib.parse import urlsplit
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from app.core.assets import static_cache_control
+
 log = logging.getLogger("eng2mouth.security")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -141,9 +143,9 @@ class SecurityMiddleware:
                             continue  # 소개 페이지는 검색 허용
                         if k.lower().encode() not in existing:
                             headers.append((k.lower().encode(), v.encode()))
-                    static = path.startswith("/static/") or path in ("/favicon.ico", "/sw.js", "/manifest.webmanifest")
-                    if not static and b"cache-control" not in existing:
-                        headers.append((b"cache-control", b"no-store"))
+                    if b"cache-control" not in existing:
+                        query = (scope.get("query_string") or b"").decode("latin-1")
+                        headers.append((b"cache-control", static_cache_control(path, query) or b"no-store"))
                     if is_https(scope):
                         headers.append((b"strict-transport-security", b"max-age=63072000; includeSubDomains"))
                         headers[:] = [(k, (v.decode() + "; upgrade-insecure-requests").encode() if k == b"content-security-policy" else v) for k, v in headers]

@@ -2,7 +2,7 @@
 :root { --app-h: 100%; --vv-top: 0px; --shell-bg: #070a13; }
 html[data-ui-theme-mode="light"] { --shell-bg: #eef0f7; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation; }
-button, a { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+button, a, summary, label, [role="button"], .call-item, .row-cell { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
 /* 앱 전체를 화면에 고정. 문서는 스크롤하지 않고 내용 영역만 스크롤한다. */
 html:has(body.app-shell) { height: 100%; overflow: hidden; }
@@ -29,7 +29,6 @@ aside.safe-top-aside { padding-top: env(safe-area-inset-top) !important; }
   body.app-shell :is(input, textarea, pre, code, table, .select-text, .bubble, .transcript-text) { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
   ::-webkit-scrollbar { width: 0; height: 0; }
   .overflow-y-auto, .overflow-auto, .overflow-x-auto { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-  button:active, .tab-item:active, .press:active { opacity: .65; }
   /* 터치 대상 최소 44px */
   .theme-settings-btn, .icon-btn { width: 40px; height: 40px; }
 }
@@ -73,3 +72,28 @@ html.kb-open .tabbar { display: none; }
 /* 키보드가 올라오면 고정 하단 CTA 는 inset 없이 */
 html.kb-open .kb-hide { display: none !important; }
 html.kb-open .composer.safe-bottom { padding-bottom: .25rem !important; }
+
+/* ── 누르는 느낌 (press.js 가 .is-pressed / .press-release 를 붙인다 · 09-native-touch-feel) ──
+   누를 땐 0ms, 뗄 땐 200ms. transform 대신 개별 scale 속성 → 슬라이드 패널 · 칩의 transform 을 건드리지 않는다 */
+.is-pressed { transition: none !important; opacity: .5; scale: .96; }
+.is-pressed:disabled { opacity: .3; scale: none; }
+/* 넓은 버튼 · 탭 · 큰 카드는 작아지면 어색하다 → 흐려지기만 */
+:is(.tab-item, .w-full, .nav-link, .topic-card.block).is-pressed { scale: none; }
+/* 통화 중 원형 버튼은 흐려지지 않고 살짝 작아지기만 (아이폰 통화 화면) */
+.ctl .is-pressed { opacity: .75; scale: .92; }
+/* 목록 줄: 흐려지지 않고 배경만 진해진다 (UITableViewCell). box-shadow 로 덧칠 → 선택 · 활성 배경을 유지 */
+:is(.call-item, .row-cell, .nav-link, .sheet-action).is-pressed { opacity: 1; scale: none; box-shadow: inset 0 0 0 999px rgba(255,255,255,.08); }
+html[data-ui-theme-mode="light"] :is(.call-item, .row-cell, .nav-link, .sheet-action).is-pressed { box-shadow: inset 0 0 0 999px rgba(15,23,42,.07); }
+.press-release { transition: opacity .2s ease-out, scale .2s cubic-bezier(.2,.9,.3,1.2), box-shadow .25s ease-out !important; }
+/* 느린 요청: 방금 누른 버튼을 흐리게 + 다시 누르기 막기 */
+.is-busy { opacity: .55; pointer-events: none; cursor: progress; }
+@media (prefers-reduced-motion: reduce) { .is-pressed { scale: none; } .press-release { transition: opacity .15s !important; } }
+
+/* 작은 버튼의 터치 영역만 넓히기 (보이는 크기는 그대로, ≥44pt). 모바일 .icon-btn · 테마 버튼은 이미 40px → 사방 5px.
+   .hit 는 글자만 있는 작은 버튼(번역 · 듣기 · 저장 · 닫기 ✕)용 — 이웃과 겹치면 뒤 버튼이 이기므로 세로로만 넓힌다 */
+@media (pointer: coarse) {
+  .icon-btn, .theme-settings-btn { position: relative; }   /* absolute 인 버튼은 Tailwind .absolute 가 뒤에서 이긴다 */
+  .icon-btn::after, .theme-settings-btn::after { content: ''; position: absolute; inset: -5px; }   /* 테두리 1px 포함 40 → 50px */
+  .hit { position: relative; }
+  .hit::after { content: ''; position: absolute; inset: -10px -2px; }
+}

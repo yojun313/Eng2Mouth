@@ -1,5 +1,7 @@
 /** Tailwind (독립 실행 CLI 빌드). 템플릿과 JS 에 쓰인 클래스만 포함된다 → 새 클래스를 쓰면 scripts/build_css.sh 재실행 */
 module.exports = {
+  // hover: 변형을 @media (hover:hover) and (pointer:fine) 안으로 → 휴대폰에서 탭한 뒤 hover 색이 남지 않는다 (09)
+  future: { hoverOnlyWhenSupported: true },
   content: ['./app/templates/**/*.html', './static/js/**/*.js', './static/shared/**/*.js'],
   safelist: [
     // 데이터(페르소나 gradient 등)에서 오는 클래스는 빌드가 못 찾으므로 명시

@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const { api, toast, esc, fmtDur, fmtDate, scoreColor, pageData, bindDraft, isComposing } = window.AppUI;
+  const { api, swr, swrInvalidate, toast, esc, fmtDur, fmtDate, scoreColor, pageData, bindDraft, isComposing } = window.AppUI;
   const D = pageData();
   const PERSONAS = D.personas || [];
   let currentPersona = D.persona;
@@ -41,7 +41,7 @@
 
   async function loadTopics() {
     try {
-      const d = await api('/api/topics/today');
+      await swr('/api/topics/today', (d) => {
       document.getElementById('todayDate').textContent = d.date;
       const done = new Set(d.done_ids || []);
       document.getElementById('dailyTopics').innerHTML = d.daily.map((t) => topicCard(t, 'topic', done.has(t.id))).join('');
@@ -53,6 +53,7 @@
           <i class="fas fa-phone text-emerald-400"></i>
         </a>`;
       if (d.personal && d.personal.length) document.getElementById('personalTopics').innerHTML = d.personal.map((t) => topicCard(t, 'personal', done.has(t.id))).join('');
+      });
     } catch (e) { console.error(e); }
   }
   loadTopics();
@@ -61,7 +62,7 @@
     if (!hasKey) { toast('먼저 설정에서 API Key를 등록해 주세요.', false, 4000, { label: '설정', onClick: () => location.href = '/settings#api' }); return; }
     const btn = e.currentTarget; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>생성 중...';
     document.getElementById('personalTopics').innerHTML = '<p class="col-span-full text-xs text-white/40 py-6 text-center"><i class="fas fa-spinner fa-spin mr-2"></i>내 기록을 바탕으로 주제를 만들고 있어요...</p>';
-    try { const d = await api('/api/topics/personal/refresh', { method: 'POST' }); document.getElementById('personalTopics').innerHTML = d.topics.map((t) => topicCard(t, 'personal', false)).join(''); toast('새 주제가 준비됐어요!'); }
+    try { const d = await api('/api/topics/personal/refresh', { method: 'POST' }); swrInvalidate('/api/topics'); document.getElementById('personalTopics').innerHTML = d.topics.map((t) => topicCard(t, 'personal', false)).join(''); toast('새 주제가 준비됐어요!'); }
     catch (err) { toast(err.message, false); document.getElementById('personalTopics').innerHTML = `<p class="col-span-full text-xs text-red-300 py-4 text-center">${esc(err.message)}</p>`; }
     finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-rotate mr-1"></i>새로 추천받기'; }
   });
@@ -107,7 +108,7 @@
 
   async function loadStats() {
     try {
-      const s = await api('/api/stats/dashboard'); lastStats = s;
+      await swr('/api/stats/dashboard', (s) => { lastStats = s;
       if (s.streak > 0) { document.getElementById('streakBadge').classList.remove('hidden'); document.getElementById('streakVal').textContent = s.streak; }
       document.getElementById('todayMin').textContent = s.today_min;
       document.getElementById('goalMin').textContent = s.daily_goal_min;
@@ -119,13 +120,14 @@
       document.getElementById('avgScore').textContent = s.avg_score ?? '—';
       document.getElementById('phraseCount').textContent = s.phrase_count;
       renderCharts(s);
+      });
     } catch (e) { console.error(e); }
   }
   loadStats();
 
   async function loadRecent() {
     try {
-      const d = await api('/api/calls?limit=5');
+      await swr('/api/calls?limit=5', (d) => {
       if (!d.items.length) return;
       document.getElementById('recentCalls').innerHTML = d.items.map((c) => `
         <a href="/history/${c.id}" class="flex items-center gap-3 glass-soft rounded-xl p-2.5 hover:bg-white/5 transition row-cell">
@@ -133,6 +135,7 @@
           <div class="min-w-0 flex-1"><p class="text-xs font-bold truncate">${esc(c.topic?.title_ko || c.topic?.title || '통화')}</p><p class="text-[10px] text-white/40">${fmtDate(c.started_at)} · ${fmtDur(c.duration_sec)} · ${esc(c.persona?.name || '')}</p></div>
           ${c.overall != null ? `<span class="text-sm font-extrabold tabular" style="color:${scoreColor(c.overall)}">${c.overall}</span>` : '<span class="status-dot warn" title="미평가"></span>'}
         </a>`).join('');
+      });
     } catch (e) { console.error(e); }
   }
   loadRecent();

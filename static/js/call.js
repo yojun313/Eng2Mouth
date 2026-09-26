@@ -1,4 +1,4 @@
-const { api, toast, esc, fmtDur, fmtKrw, scoreColor, isComposing, bindDraft, actionSheet } = window.AppUI;
+const { api, swr, haptic, toast, esc, fmtDur, fmtKrw, scoreColor, isComposing, bindDraft, actionSheet } = window.AppUI;
 
 // =====================================================================================
 //  Eng2Mouth Call — OpenAI Realtime (WebRTC) 전화 통화
@@ -48,6 +48,7 @@ function startRingback() {
 function stopRingback() { clearInterval(ringTimer); ringTimer = null; ringNodes.forEach((n) => { try { n.stop(); } catch (e) {} }); ringNodes = []; }
 function beep(freq = 880, dur = 0.12, vol = 0.05) { try { const ctx = ensureAudioCtx(); const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = freq; g.gain.value = vol; o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + dur); } catch (e) {} }
 function hangupTone() { beep(480, 0.25, 0.05); setTimeout(() => beep(480, 0.25, 0.05), 400); }
+// 연결 · 상대가 끊음처럼 제스처 밖에서 일어나는 알림은 안드로이드 진동만 (iOS 햅틱은 제스처 안에서만 울린다)
 function vibrate(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} }
 
 // ---------- 준비 화면 ----------
@@ -122,7 +123,7 @@ function updateEstimate() {
     if (!(M.has_key)) line.innerHTML += `<br><span class="text-amber-300"><i class="fas fa-triangle-exclamation mr-1"></i>${PROVIDER_INFO[prov].label} API Key가 없습니다. <a href="/settings#api" class="underline">설정에서 등록</a></span>`;
 }
 async function loadModels() {
-    try { const d = await api('/api/models'); MODELS = { ...MODELS, ...d, openai: { ...MODELS.openai, ...d.openai }, gemini: { ...MODELS.gemini, ...d.gemini } }; renderModelSection(); }
+    try { await swr('/api/models', (d) => { MODELS = { ...MODELS, ...d, openai: { ...MODELS.openai, ...d.openai }, gemini: { ...MODELS.gemini, ...d.gemini } }; renderModelSection(); }); }
     catch (e) { console.warn('models', e); }
 }
 function segInit(id, key) {
@@ -140,13 +141,21 @@ async function initSetup() {
     else if (setup.kind === 'free') setTopicChoice('free', null);
     else setTopicChoice('free', null);
     try {
-        const [t, all] = await Promise.all([api('/api/topics/today'), api('/api/topics/all')]);
-        today = t;
-        if (setup.kind === 'topic' && setup.topicId) { const f = all.topics.find((x) => x.id === setup.topicId); if (f) setTopicChoice('topic', f); }
-        if (setup.kind === 'scenario' && setup.topicId) { const f = all.scenarios.find((x) => x.id === setup.topicId); if (f) setTopicChoice('scenario', f); }
-        if (setup.kind === 'personal' && setup.topicId) { const f = (t.personal || []).find((x) => x.id === setup.topicId); if (f) setTopicChoice('personal', f); }
-        if (!setup.topicId && setup.kind === 'topic' && t.daily?.length) setTopicChoice('topic', t.daily[0]);
-        renderSetupTopicList();
+        // 캐시 먼저 → 새 데이터 (10 §4). 주소로 넘어온 주제 선택은 처음 한 번만 적용 (그 뒤 사용자가 바꾼 선택을 덮지 않게)
+        let all = null, t = null, applied = false;
+        const apply = () => {
+            if (!all || !t) return;
+            today = t;
+            if (!applied) {
+                applied = true;
+                if (setup.kind === 'topic' && setup.topicId) { const f = all.topics.find((x) => x.id === setup.topicId); if (f) setTopicChoice('topic', f); }
+                if (setup.kind === 'scenario' && setup.topicId) { const f = all.scenarios.find((x) => x.id === setup.topicId); if (f) setTopicChoice('scenario', f); }
+                if (setup.kind === 'personal' && setup.topicId) { const f = (t.personal || []).find((x) => x.id === setup.topicId); if (f) setTopicChoice('personal', f); }
+                if (!setup.topicId && setup.kind === 'topic' && t.daily?.length) setTopicChoice('topic', t.daily[0]);
+            }
+            renderSetupTopicList();
+        };
+        await Promise.all([swr('/api/topics/today', (d) => { t = d; apply(); }), swr('/api/topics/all', (d) => { all = d; apply(); })]);
     } catch (e) { console.error(e); }
     document.getElementById('setupCustomForm').addEventListener('submit', (e) => { e.preventDefault(); const v = document.getElementById('setupCustomInput').value.trim(); if (v) setTopicChoice('custom', { id: 'custom', title: v, title_ko: v, emoji: '💬', description_ko: '직접 정한 주제' }); });
     document.getElementById('dialBtn').addEventListener('click', dial);
@@ -155,6 +164,7 @@ async function initSetup() {
 
 // ---------- 발신 ----------
 async function dial() {
+    haptic(10);   // 누른 그 순간 — await 뒤에 두면 iOS 에서 안 울린다
     const err = document.getElementById('setupError'); err.classList.add('hidden');
     const provHasKey = setup.provider === 'gemini' ? MODELS.gemini.has_key : MODELS.openai.has_key;
     if (!provHasKey) { err.textContent = `설정에서 ${PROVIDER_INFO[setup.provider].label} API Key를 먼저 등록해 주세요.`; err.classList.remove('hidden'); setTimeout(() => location.href = '/settings#api', 1200); return; }
@@ -486,10 +496,10 @@ document.getElementById('holdBtn').addEventListener('click', () => { call.held =
 document.getElementById('slowerBtn').addEventListener('click', () => { sendText("Sorry, I didn't quite catch that. Could you say it again a little more slowly?", false); toast('다시 천천히 말해달라고 요청했어요'); });
 document.getElementById('keyboardBtn').addEventListener('click', () => openSheet('keyboardSheet', () => document.getElementById('typeInput').focus()));
 document.getElementById('logBtn').addEventListener('click', () => { renderLog(); openSheet('logSheet'); });
-document.getElementById('hangupBtn').addEventListener('click', () => hangup('user'));
+document.getElementById('hangupBtn').addEventListener('click', () => { haptic(20); hangup('user'); });
 const typeInput = document.getElementById('typeInput'); const clearTypeDraft = bindDraft(typeInput, 'call-typed');
 typeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && isComposing(e)) e.preventDefault(); });
-document.getElementById('typeForm').addEventListener('submit', (e) => { e.preventDefault(); const v = typeInput.value.trim(); if (!v) return; sendText(v, true); typeInput.value = ''; clearTypeDraft(); closeSheets(); });
+document.getElementById('typeForm').addEventListener('submit', (e) => { e.preventDefault(); const v = typeInput.value.trim(); if (!v) return; haptic(10); sendText(v, true); typeInput.value = ''; clearTypeDraft(); closeSheets(); });
 // 빠른 문구: 탭 = 입력창에 넣기, 길게 누름 = 바로 보내기 (버튼을 눌러도 키보드가 내려가지 않게 pointerdown 에서 preventDefault)
 const QUICK = ['Could you say that again?', 'What does that mean?', 'Let me think for a second.', 'How do you say it in English?', 'Sorry, I meant…', "That's interesting!"];
 const quickRow = document.getElementById('quickPhrases');
@@ -522,7 +532,7 @@ document.getElementById('translateBtn').addEventListener('click', async () => {
 // PTT
 (function () {
     const btn = document.getElementById('pttBtn'); let holding = false;
-    const down = (e) => { e.preventDefault(); if (holding || !call.connected) return; holding = true; btn.classList.add('holding'); vibrate(15); call.mic?.getAudioTracks().forEach((t) => t.enabled = !call.muted); call.P && call.P.pttStart(); document.getElementById('pttLabel').textContent = '듣고 있어요… 놓으면 전송'; };
+    const down = (e) => { e.preventDefault(); if (holding || !call.connected) return; holding = true; btn.classList.add('holding'); haptic(15); call.mic?.getAudioTracks().forEach((t) => t.enabled = !call.muted); call.P && call.P.pttStart(); document.getElementById('pttLabel').textContent = '듣고 있어요… 놓으면 전송'; };
     const up = (e) => { e.preventDefault(); if (!holding) return; holding = false; btn.classList.remove('holding'); setTimeout(() => { call.mic?.getAudioTracks().forEach((t) => t.enabled = false); call.P && call.P.pttEnd(); }, 250); document.getElementById('pttLabel').textContent = '누르고 있는 동안 말하세요'; };
     btn.addEventListener('pointerdown', down); btn.addEventListener('pointerup', up); btn.addEventListener('pointercancel', up); btn.addEventListener('pointerleave', (e) => { if (holding) up(e); });
     document.addEventListener('keydown', (e) => { if (e.code === 'Space' && call.ptt && !e.repeat && e.target.tagName !== 'INPUT') down(e); });
@@ -609,8 +619,8 @@ function renderEvaluation(ev, callId) {
         <div class="glass rounded-2xl p-4"><p class="text-xs font-bold text-emerald-300 mb-2"><i class="fas fa-thumbs-up mr-1"></i>잘한 점</p><ul class="text-xs text-white/75 space-y-1.5 list-disc list-inside">${(ev.strengths || []).map((s) => `<li>${esc(s)}</li>`).join('')}</ul></div>
         <div class="glass rounded-2xl p-4"><p class="text-xs font-bold text-amber-300 mb-2"><i class="fas fa-bullseye mr-1"></i>보완할 점</p><ul class="text-xs text-white/75 space-y-1.5 list-disc list-inside">${(ev.improvements || []).map((s) => `<li>${esc(s)}</li>`).join('')}</ul></div>
     </div>
-    ${(ev.corrections || []).length ? `<div class="glass rounded-2xl p-4"><p class="text-xs font-bold text-red-300 mb-3"><i class="fas fa-pen mr-1"></i>이렇게 고쳐 말해요</p><div class="space-y-3">${ev.corrections.map((c) => `<div class="glass-soft rounded-xl p-3 text-sm"><p class="text-white/50 line-through decoration-red-400/60 text-[13px]">${esc(c.original)}</p><p class="font-bold text-emerald-200 mt-0.5">${esc(c.better)}</p><p class="text-[11px] text-white/50 mt-1">${esc(c.why_ko)}</p><button class="save-phrase mt-2 text-[11px] text-blue-300 hover:text-blue-200" data-phrase="${esc(c.better)}" data-meaning="${esc(c.why_ko)}" data-example="${esc(c.original)}" data-kind="correction"><i class="far fa-bookmark mr-1"></i>표현 노트에 저장</button></div>`).join('')}</div></div>` : ''}
-    ${(ev.expressions || []).length ? `<div class="glass rounded-2xl p-4"><p class="text-xs font-bold text-blue-300 mb-3"><i class="fas fa-star mr-1"></i>가져갈 표현</p><div class="space-y-3">${ev.expressions.map((x) => `<div class="glass-soft rounded-xl p-3 text-sm"><div class="flex items-start justify-between gap-2"><p class="font-bold">${esc(x.phrase)}</p><button class="speak-btn text-white/50 hover:text-white flex-shrink-0" data-text="${esc(x.phrase)}" aria-label="듣기"><i class="fas fa-volume-high"></i></button></div><p class="text-xs text-white/60">${esc(x.meaning_ko)}</p><p class="text-[12px] text-white/50 italic mt-1">“${esc(x.example)}”</p><button class="save-phrase mt-2 text-[11px] text-blue-300 hover:text-blue-200" data-phrase="${esc(x.phrase)}" data-meaning="${esc(x.meaning_ko)}" data-example="${esc(x.example)}" data-kind="expression"><i class="far fa-bookmark mr-1"></i>표현 노트에 저장</button></div>`).join('')}</div></div>` : ''}
+    ${(ev.corrections || []).length ? `<div class="glass rounded-2xl p-4"><p class="text-xs font-bold text-red-300 mb-3"><i class="fas fa-pen mr-1"></i>이렇게 고쳐 말해요</p><div class="space-y-3">${ev.corrections.map((c) => `<div class="glass-soft rounded-xl p-3 text-sm"><p class="text-white/50 line-through decoration-red-400/60 text-[13px]">${esc(c.original)}</p><p class="font-bold text-emerald-200 mt-0.5">${esc(c.better)}</p><p class="text-[11px] text-white/50 mt-1">${esc(c.why_ko)}</p><button class="save-phrase hit mt-2 text-[11px] text-blue-300 hover:text-blue-200" data-phrase="${esc(c.better)}" data-meaning="${esc(c.why_ko)}" data-example="${esc(c.original)}" data-kind="correction"><i class="far fa-bookmark mr-1"></i>표현 노트에 저장</button></div>`).join('')}</div></div>` : ''}
+    ${(ev.expressions || []).length ? `<div class="glass rounded-2xl p-4"><p class="text-xs font-bold text-blue-300 mb-3"><i class="fas fa-star mr-1"></i>가져갈 표현</p><div class="space-y-3">${ev.expressions.map((x) => `<div class="glass-soft rounded-xl p-3 text-sm"><div class="flex items-start justify-between gap-2"><p class="font-bold">${esc(x.phrase)}</p><button class="speak-btn hit text-white/50 hover:text-white flex-shrink-0" data-text="${esc(x.phrase)}" aria-label="듣기"><i class="fas fa-volume-high"></i></button></div><p class="text-xs text-white/60">${esc(x.meaning_ko)}</p><p class="text-[12px] text-white/50 italic mt-1">“${esc(x.example)}”</p><button class="save-phrase hit mt-2 text-[11px] text-blue-300 hover:text-blue-200" data-phrase="${esc(x.phrase)}" data-meaning="${esc(x.meaning_ko)}" data-example="${esc(x.example)}" data-kind="expression"><i class="far fa-bookmark mr-1"></i>표현 노트에 저장</button></div>`).join('')}</div></div>` : ''}
     ${(ev.filler_words || []).length ? `<div class="glass-soft rounded-2xl p-3 text-xs text-white/60"><i class="fas fa-comment-slash mr-1 text-white/40"></i>자주 쓴 군말: ${ev.filler_words.map((f) => `<span class="chip mx-0.5">${esc(f)}</span>`).join('')}</div>` : ''}
     <div class="glass rounded-2xl p-4"><p class="text-xs font-bold text-purple-300 mb-2"><i class="fas fa-flag-checkered mr-1"></i>다음 통화 목표</p><ul class="text-xs text-white/75 space-y-1.5 list-disc list-inside">${(ev.next_goals || []).map((s) => `<li>${esc(s)}</li>`).join('')}</ul></div>`;
 }

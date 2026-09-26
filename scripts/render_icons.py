@@ -6,13 +6,19 @@
 만드는 파일: apple-touch-icon.png(180), icon-192.png, icon-512.png, favicon-32.png
 원본 SVG 는 꽉 찬 정사각형(모서리 둥글게 X, 투명 X)이어야 한다 — iOS 가 모서리를 직접 자른다.
 """
+
 import asyncio
 import sys
 from pathlib import Path
 
 from playwright.async_api import async_playwright
 
-SIZES = [(180, "apple-touch-icon.png"), (192, "icon-192.png"), (512, "icon-512.png"), (32, "favicon-32.png")]
+SIZES = [
+    (180, "apple-touch-icon.png"),
+    (192, "icon-192.png"),
+    (512, "icon-512.png"),
+    (32, "favicon-32.png"),
+]
 
 
 async def main(svg_path: Path, out_dir: Path) -> None:
